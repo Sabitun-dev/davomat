@@ -78,6 +78,64 @@ export interface Today {
   currency: Currency;
 }
 
+export interface Branch {
+  id: number;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  radiusM: number;
+  timezone: string;
+  qrVersion: number;
+  qrMode: "STATIC" | "ROTATING";
+  breakAllowanceMin: number;
+  graceMin: number;
+  graceMode: "FULL" | "AFTER_GRACE";
+  active: boolean;
+  workerCount?: number;
+}
+
+export interface BranchDetail extends Branch {
+  qr: { svg: string; version: number; pngUrl: string; posterUrl: string; fileBase: string };
+}
+
+export interface Member {
+  memberId: number;
+  userId: number;
+  name: string;
+  phone: string | null;
+  username: string | null;
+  position: string;
+  defaultDailyAmount: number | null;
+  active: boolean;
+  joinedAt: string;
+  otherBranches: { id: number; name: string }[];
+}
+
+export interface Invite {
+  id: number;
+  role: "WORKER" | "ADMIN";
+  expiresAt: string;
+  maxUses: number | null;
+  uses: number;
+  link: string;
+}
+
+export interface Device {
+  id: number;
+  name: string;
+  lastSeenAt: string | null;
+}
+
+export interface Person {
+  userId: number;
+  name: string;
+  phone: string | null;
+  username: string | null;
+  role: Role;
+  adminBranchIds: number[];
+}
+
 export interface AttemptResult {
   ok: boolean;
   eventType: EventType;
