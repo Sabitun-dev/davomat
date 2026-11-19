@@ -8,6 +8,7 @@ import { env, logError } from "../lib/env.ts";
 import { t } from "../i18n/index.ts";
 import { pickLanguage, savePhoneFromContact } from "../users/service.ts";
 import { onGroupVideoNote } from "../video/service.ts";
+import { replyUnderVideo } from "../jobs/notify.ts";
 import { openAppKeyboard } from "./api.ts";
 
 async function languageOf(ctx: Context): Promise<string> {
@@ -72,12 +73,13 @@ export function createBot(botInfo?: UserFromGetMe): Bot {
     if (ctx.chat.type === "private" || !ctx.from) return;
     const groupId = env.groupChatId;
     if (groupId === null || BigInt(ctx.chat.id) !== groupId) return;
-    await onGroupVideoNote({
+    const linked = await onGroupVideoNote({
       chatId: BigInt(ctx.chat.id),
       messageId: ctx.message.message_id,
       fromTelegramId: BigInt(ctx.from.id),
       sentAt: new Date(ctx.message.date * 1000),
     });
+    if (linked?.linkedEvent) await replyUnderVideo(linked.linkedEvent.id);
   });
 
   // The user blocked or unblocked the bot.

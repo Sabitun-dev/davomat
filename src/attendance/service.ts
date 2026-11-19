@@ -10,6 +10,7 @@ import { minuteToHHMM, monthOf, toLocal } from "../shared/time.ts";
 import { isMonthLocked, recalcDay } from "../pay/recalc.ts";
 import { resolveDay } from "../schedule/resolve.ts";
 import { linkVideoToEvent } from "../video/service.ts";
+import { replyUnderVideo } from "../jobs/notify.ts";
 import { suspiciousFlags } from "./flags.ts";
 import { checkGeofence } from "./geo.ts";
 import { checkTokenFreshness, parseToken } from "./qr.ts";
@@ -168,7 +169,7 @@ export async function recordAttempt(
   if (await isMonthLocked(db(), companyId, monthOf(local.date))) return saveRejection({ reason: "month_locked", branch });
 
   try {
-    return await transaction(async (tx) => {
+    const accepted = await transaction(async (tx) => {
       // One attempt per worker at a time, so two quick taps cannot both check in.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(${user.id})`;
 
@@ -255,8 +256,11 @@ export async function recordAttempt(
       });
       await linkVideoToEvent(tx, event, settings);
       const result = await recalcDay(tx, user.id, local.date, now);
-      return resultOf(event, branch, eventType === "CHECK_IN" ? (result?.lateMin ?? 0) : undefined);
+      return { result: resultOf(event, branch, eventType === "CHECK_IN" ? (result?.lateMin ?? 0) : undefined), eventId: event.id };
     });
+    // Optional reply under the group video (only when that setting is on).
+    await replyUnderVideo(accepted.eventId);
+    return accepted.result;
   } catch (err) {
     if (err instanceof Rejection) return saveRejection(err.r);
     if (isUniqueViolation(err)) {

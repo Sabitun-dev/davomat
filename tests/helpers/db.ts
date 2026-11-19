@@ -6,6 +6,8 @@ import { PGlite } from "@electric-sql/pglite";
 import { PrismaPGlite } from "pglite-prisma-adapter";
 import { PrismaClient } from "../../src/generated/prisma/client.ts";
 import { setDb } from "../../src/lib/db.ts";
+import { setTelegram } from "../../src/bot/api.ts";
+import type { Api } from "grammy";
 
 export const TEST_BOT_TOKEN = "123456:TEST-token-for-unit-tests-only-abcdefghijk";
 
@@ -21,8 +23,25 @@ export function setTestEnv(): void {
   delete process.env.GROUP_CHAT_ID;
 }
 
+/** Every message the bot "sent" during a test. */
+export const sent: { method: string; chatId: number; text?: string; filename?: string; replyTo?: number }[] = [];
+
+function fakeTelegram() {
+  return {
+    sendMessage: async (chatId: number, text: string, extra?: { reply_parameters?: { message_id: number } }) => {
+      sent.push({ method: "sendMessage", chatId, text, replyTo: extra?.reply_parameters?.message_id });
+      return { message_id: sent.length };
+    },
+    sendDocument: async (chatId: number, file: { filename?: string }) => {
+      sent.push({ method: "sendDocument", chatId, filename: file.filename });
+      return { message_id: sent.length };
+    },
+  } as unknown as Api;
+}
+
 export async function createTestDb(): Promise<PrismaClient> {
   setTestEnv();
+  setTelegram(fakeTelegram());
   const pg = new PGlite();
   const dir = join(process.cwd(), "prisma", "migrations");
   for (const name of readdirSync(dir).filter((n) => !n.endsWith(".toml")).sort()) {

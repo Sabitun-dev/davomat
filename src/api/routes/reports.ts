@@ -9,6 +9,7 @@ import { canManageWorker, ensure } from "../../auth/permissions.ts";
 import { db } from "../../lib/db.ts";
 import { isValidMonth } from "../../shared/time.ts";
 import { workerMonth } from "../../reports/worker.ts";
+import { getCompany, updateCompany } from "../../users/company.ts";
 import { body, intParam, type AppEnv } from "../context.ts";
 
 export const reportRoutes = new Hono<AppEnv>();
@@ -33,6 +34,8 @@ reportRoutes.get("/reports/worker-days", async (c) => {
   ensure(canManageWorker(c.get("actor"), rows.map((r) => r.branchId)));
   return c.json(await workerMonth(userId, month));
 });
+reportRoutes.get("/company", async (c) => c.json(await getCompany(c.get("actor"))));
+reportRoutes.patch("/company", async (c) => c.json(await updateCompany(c.get("actor"), await body(c))));
 reportRoutes.get("/review", async (c) => c.json(await reviewList(c.get("actor"))));
 
 /** The bot sends the file to the admin's chat; a signed link is returned for downloadFile. */

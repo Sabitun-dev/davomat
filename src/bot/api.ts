@@ -12,6 +12,11 @@ export function telegram(): Api {
   return api;
 }
 
+/** Tests plug in a fake that records messages instead of calling Telegram. */
+export function setTelegram(fake: Api): void {
+  api = fake;
+}
+
 export type SendResult = "ok" | "blocked" | "failed";
 
 async function handleFailure(chatId: bigint | number, err: unknown): Promise<SendResult> {
