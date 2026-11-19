@@ -17,6 +17,7 @@ export const screens: Record<string, ComponentType<any>> = {
   admins: lazy(() => import("./admin/Admins.tsx")),
   schedule: lazy(() => import("./admin/Schedule.tsx")),
   amounts: lazy(() => import("./admin/Amounts.tsx")),
-  workerReport: lazy(() => import("./Soon.tsx")),
+  workerReport: lazy(() => import("./admin/WorkerReport.tsx")),
+  review: lazy(() => import("./admin/Review.tsx")),
   company: lazy(() => import("./Soon.tsx")),
 };

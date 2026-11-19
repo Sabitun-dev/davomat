@@ -9,6 +9,7 @@ import { db } from "../../lib/db.ts";
 import { env } from "../../lib/env.ts";
 import { AppError, notFound } from "../../lib/errors.ts";
 import { verifySignedUrl } from "../../lib/signedUrl.ts";
+import { exportFileFromParams } from "../../reports/exportFiles.ts";
 import type { AppEnv } from "../context.ts";
 
 export const publicRoutes = new Hono<AppEnv>();
@@ -50,6 +51,10 @@ publicRoutes.get("/files/:name", async (c) => {
     return name === "qr.png"
       ? file(await qrPng(text), "image/png", `${slug}-qr.png`)
       : file(await posterPdf(branch, text), "application/pdf", `${slug}-poster.pdf`);
+  }
+  if (name === "export") {
+    const out = await exportFileFromParams(params);
+    return file(out.data, out.type, out.filename);
   }
   throw notFound();
 });

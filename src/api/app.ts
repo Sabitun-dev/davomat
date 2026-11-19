@@ -10,6 +10,7 @@ import { inviteRoutes } from "./routes/invites.ts";
 import { meRoutes } from "./routes/me.ts";
 import { payRoutes } from "./routes/pay.ts";
 import { publicRoutes } from "./routes/public.ts";
+import { reportRoutes } from "./routes/reports.ts";
 import { workerRoutes } from "./routes/worker.ts";
 
 const requireStaff: MiddlewareHandler<AppEnv> = async (c, next) => {
@@ -43,6 +44,7 @@ export function createApp() {
   app.route("/worker", workerRoutes);
   app.route("/admin", branchRoutes);
   app.route("/admin", payRoutes);
+  app.route("/admin", reportRoutes);
 
   return app;
 }
