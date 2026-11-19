@@ -7,6 +7,10 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # Netlify's secret scanner treats every environment variable as a secret. These are plain settings
+  # whose values (e.g. "Asia/Tashkent", "uz", "app") normally appear in the code, so they are skipped.
+  # Real secrets (BOT_TOKEN, DATABASE_URL, WEBHOOK_SECRET, SETUP_SECRET, QR_SIGNING_SECRET) are still scanned.
+  SECRETS_SCAN_OMIT_KEYS = "DEFAULT_TIMEZONE,DEFAULT_LANGUAGE,MINIAPP_SHORT_NAME,BOT_USERNAME,GROUP_CHAT_ID,OWNER_TELEGRAM_IDS,APP_URL,NODE_VERSION"
 
 [functions]
   node_bundler = "esbuild"
