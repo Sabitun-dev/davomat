@@ -22,8 +22,8 @@ export interface DayInput {
   breakAllowanceMin: number;
   /** The daily amount for this day; null = not filled in. */
   amount: number | null;
-  /** Accepted, not-voided events of the day, sorted by time. */
-  events: { type: EventType; minute: number }[];
+  /** Accepted, not-voided events of the day, sorted by time. `auto` = added by the system (auto-close). */
+  events: { type: EventType; minute: number; auto?: boolean }[];
   /** Current local minute when the date is today; null when the date is already over. */
   nowMinute: number | null;
   /** Minutes after scheduled end when an open day is closed automatically (default 120). */
@@ -147,7 +147,8 @@ export function computeDay(input: DayInput): DayOutput {
   }
 
   const autoCloseAt = end + input.autoCloseAfterMin;
-  const autoClosed = realOut === null && (dayOver || nowMinute! >= autoCloseAt);
+  const closedBySystem = checkOutEvents.length > 0 && checkOutEvents[checkOutEvents.length - 1].auto === true;
+  const autoClosed = closedBySystem || (realOut === null && (dayOver || nowMinute! >= autoCloseAt));
   const inProgress = realOut === null && !autoClosed;
 
   // Check-out after end counts until end (no overtime); with no check-out the day closes at end.
@@ -155,7 +156,7 @@ export function computeDay(input: DayInput): DayOutput {
   const openBreakEnd = realOut ?? (inProgress ? Math.min(nowMinute!, end) : end);
 
   const late = lateMinutes(checkIn, start, input.graceMin, input.graceMode);
-  const early = realOut === null ? 0 : Math.max(0, end - realOut);
+  const early = realOut === null || closedBySystem ? 0 : Math.max(0, end - realOut);
   const breakMin = clippedTotal(breakSpans(events, openBreakEnd), start, end);
   const overage = Math.max(0, breakMin - input.breakAllowanceMin);
   const worked = Math.min(scheduled, Math.max(0, scheduled - late - early - overage));

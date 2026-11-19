@@ -385,7 +385,7 @@ CREATE INDEX "attendance_events_user_id_local_date_idx" ON "attendance_events"("
 CREATE INDEX "attendance_events_branch_id_local_date_idx" ON "attendance_events"("branch_id", "local_date");
 
 -- CreateIndex
-CREATE INDEX "attendance_events_user_id_created_at_idx" ON "attendance_events"("user_id", "created_at");
+CREATE INDEX "attendance_events_user_id_server_time_idx" ON "attendance_events"("user_id", "server_time");
 
 -- CreateIndex
 CREATE INDEX "attendance_events_device_id_local_date_idx" ON "attendance_events"("device_id", "local_date");

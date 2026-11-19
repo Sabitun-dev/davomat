@@ -7,6 +7,10 @@ import WorkerHome from "./worker/Home.tsx";
 export const screens: Record<string, ComponentType<any>> = {
   workerHome: WorkerHome,
   settings: lazy(() => import("./Settings.tsx")),
+  scan: lazy(() => import("./worker/Scan.tsx")),
+  month: lazy(() => import("./worker/Month.tsx")),
+  history: lazy(() => import("./worker/History.tsx")),
+  day: lazy(() => import("./DayView.tsx")),
   adminHome: lazy(() => import("./admin/AdminHome.tsx")),
   branchEditor: lazy(() => import("./admin/BranchEditor.tsx")),
   branch: lazy(() => import("./admin/BranchDetail.tsx")),

@@ -9,6 +9,7 @@ import { branchRoutes } from "./routes/branches.ts";
 import { inviteRoutes } from "./routes/invites.ts";
 import { meRoutes } from "./routes/me.ts";
 import { publicRoutes } from "./routes/public.ts";
+import { workerRoutes } from "./routes/worker.ts";
 
 const requireStaff: MiddlewareHandler<AppEnv> = async (c, next) => {
   if (!isStaff(c.get("actor"))) throw forbidden();
@@ -30,7 +31,7 @@ export function createApp() {
   app.route("/", publicRoutes);
 
   // Everything below needs a valid Telegram initData.
-  for (const prefix of ["/me", "/invites", "/admin"]) {
+  for (const prefix of ["/me", "/invites", "/worker", "/admin"]) {
     app.use(prefix, requireTelegram);
     app.use(`${prefix}/*`, requireTelegram);
   }
@@ -38,6 +39,7 @@ export function createApp() {
 
   app.route("/me", meRoutes);
   app.route("/invites", inviteRoutes);
+  app.route("/worker", workerRoutes);
   app.route("/admin", branchRoutes);
 
   return app;

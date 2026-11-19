@@ -168,6 +168,8 @@ export const uz = {
   "w.today_schedule": "Bugun: {start}–{end}",
   "w.today_off": "Bugun dam olish kuni",
   "w.streak": "{n} kun ketma-ket vaqtida 🔥",
+  "w.streak_label": "Seriya",
+  "w.streak_days": "kun ketma-ket vaqtida 🔥",
   "w.streak_zero": "Ertaga vaqtida keling — seriya boshlanadi 🔥",
   "w.week": "Bu hafta vaqtida",
   "w.month_earned": "Bu oy topganingiz",
@@ -251,6 +253,7 @@ export const uz = {
   "d.clear_earned": "Formulaga qaytarish",
   "d.set_amount": "Shu kun summasi",
   "d.rejected": "Rad etilgan urinishlar",
+  "d.rejected_one": "rad etildi",
 
   // Settings
   "set.title": "Sozlamalar",

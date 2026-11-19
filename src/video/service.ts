@@ -1,16 +1,58 @@
-// Group video notes (spec section 5.4). Every round video in the group is stored.
+// Group video notes (spec 5.4). Every round video in the group is stored and linked to the
+// worker's nearest event: a video from 15 min before to 5 min after the event (settings).
 
-import { db, isUniqueViolation } from "../lib/db.ts";
+import { db, isUniqueViolation, transaction, type Tx } from "../lib/db.ts";
+import { parseSettings, type CompanySettings } from "../lib/settings.ts";
+import { recalcDay } from "../pay/recalc.ts";
+import type { AttendanceEvent } from "../generated/prisma/client.ts";
+
+/** Is a video sent at `videoAt` inside the window of an event at `eventAt`? */
+export function inWindow(eventAt: Date, videoAt: Date, beforeMin: number, afterMin: number): boolean {
+  const diff = videoAt.getTime() - eventAt.getTime();
+  return diff >= -beforeMin * 60_000 && diff <= afterMin * 60_000;
+}
+
+/** The candidate closest in time that is inside the window, or null. */
+export function nearest<T extends { at: Date }>(
+  pivot: Date,
+  candidates: T[],
+  fits: (candidate: T) => boolean,
+): T | null {
+  let best: T | null = null;
+  for (const c of candidates) {
+    if (!fits(c)) continue;
+    if (!best || Math.abs(c.at.getTime() - pivot.getTime()) < Math.abs(best.at.getTime() - pivot.getTime())) best = c;
+  }
+  return best;
+}
+
+/** After an event is accepted: link the worker's nearest unlinked video in the window. */
+export async function linkVideoToEvent(tx: Tx, event: AttendanceEvent, settings: CompanySettings): Promise<void> {
+  if (event.source !== "APP" || event.status !== "ACCEPTED") return;
+  const user = await tx.user.findUniqueOrThrow({ where: { id: event.userId }, select: { telegramId: true } });
+  const from = new Date(event.serverTime.getTime() - settings.videoBeforeMin * 60_000);
+  const to = new Date(event.serverTime.getTime() + settings.videoAfterMin * 60_000);
+  const videos = await tx.videoNote.findMany({
+    where: { userTelegramId: user.telegramId, linkedEventId: null, sentAt: { gte: from, lte: to } },
+  });
+  const pick = nearest(
+    event.serverTime,
+    videos.map((v) => ({ ...v, at: v.sentAt })),
+    (v) => inWindow(event.serverTime, v.at, settings.videoBeforeMin, settings.videoAfterMin),
+  );
+  if (pick) await tx.videoNote.update({ where: { id: pick.id }, data: { linkedEventId: event.id, userId: event.userId } });
+}
 
 export async function onGroupVideoNote(input: {
   chatId: bigint;
   messageId: number;
   fromTelegramId: bigint;
   sentAt: Date;
-}): Promise<void> {
+}): Promise<{ videoId: number; linkedEvent: AttendanceEvent | null } | null> {
   const user = await db().user.findUnique({ where: { telegramId: input.fromTelegramId }, select: { id: true } });
+  let videoId: number;
   try {
-    await db().videoNote.create({
+    const v = await db().videoNote.create({
       data: {
         chatId: input.chatId,
         messageId: input.messageId,
@@ -19,7 +61,48 @@ export async function onGroupVideoNote(input: {
         sentAt: input.sentAt,
       },
     });
+    videoId = v.id;
   } catch (err) {
-    if (!isUniqueViolation(err)) throw err;
+    if (isUniqueViolation(err)) return null;
+    throw err;
   }
+  if (!user) return { videoId, linkedEvent: null };
+
+  // The other direction: a video that arrives after the event.
+  return transaction(async (tx) => {
+    const membership = await tx.membership.findFirst({ where: { userId: user.id, active: true }, include: { company: true } });
+    if (!membership) return { videoId, linkedEvent: null };
+    const settings = parseSettings(membership.company.settings);
+    const from = new Date(input.sentAt.getTime() - settings.videoAfterMin * 60_000);
+    const to = new Date(input.sentAt.getTime() + settings.videoBeforeMin * 60_000);
+    const events = await tx.attendanceEvent.findMany({
+      where: {
+        userId: user.id,
+        status: "ACCEPTED",
+        source: "APP",
+        voided: false,
+        videoNote: null,
+        serverTime: { gte: from, lte: to },
+      },
+    });
+    const pick = nearest(
+      input.sentAt,
+      events.map((e) => ({ ...e, at: e.serverTime })),
+      (e) => inWindow(e.at, input.sentAt, settings.videoBeforeMin, settings.videoAfterMin),
+    );
+    if (pick) {
+      await tx.videoNote.update({ where: { id: videoId }, data: { linkedEventId: pick.id } });
+      await recalcDay(tx, user.id, pick.localDate);
+      const { at: _at, ...event } = pick;
+      return { videoId, linkedEvent: event as AttendanceEvent };
+    }
+    return { videoId, linkedEvent: null };
+  });
+}
+
+/** https://t.me/c/<id>/<message> for a supergroup (-100… ids). */
+export function videoLink(chatId: bigint, messageId: number): string | null {
+  const s = chatId.toString();
+  if (!s.startsWith("-100")) return null;
+  return `https://t.me/c/${s.slice(4)}/${messageId}`;
 }

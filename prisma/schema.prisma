@@ -316,7 +316,7 @@ model AttendanceEvent {
 
   @@index([userId, localDate])
   @@index([branchId, localDate])
-  @@index([userId, createdAt])
+  @@index([userId, serverTime])
   @@index([deviceId, localDate])
   @@map("attendance_events")
 }
