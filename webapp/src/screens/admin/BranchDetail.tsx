@@ -60,9 +60,10 @@ export default function BranchDetail({ id, tab: initialTab }: { id: number; tab?
         </button>
       }
     >
-      <div className="scroll-x -mx-4 px-4">
-        <div className="min-w-[400px]">
+      <div>
+        <div>
           <Segmented
+            compact
             value={tab}
             onChange={setTab}
             options={[
@@ -111,7 +112,7 @@ function WorkersTab({ branch }: { branch: Detail }) {
           {t("b.tab_schedule")}
         </Button>
         <Button variant="secondary" icon={<Coins size={20} />} onClick={() => nav.push("amounts", { branchId: branch.id })}>
-          {t("amt.title")}
+          {t("amt.short")}
         </Button>
       </div>
       <SectionTitle>{t("mem.title")} · {active.length}</SectionTitle>

@@ -104,7 +104,8 @@ export function telegramLanguage(): string | undefined {
 }
 
 export function colorScheme(): "light" | "dark" {
-  if (tg?.colorScheme) return tg.colorScheme;
+  // Outside Telegram the script still exists but always says "light".
+  if (inTelegram && tg?.colorScheme) return tg.colorScheme;
   return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 

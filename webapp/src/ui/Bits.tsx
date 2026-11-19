@@ -24,7 +24,8 @@ export function StatTile({
         {icon}
         <span className="truncate">{label}</span>
       </span>
-      <span className={`tabular text-[22px] leading-tight font-bold ${color}`}>{value}</span>
+      {/* Long money values shrink so they never get cut off in a half-width tile. */}
+      <span className={`tabular leading-tight font-bold whitespace-nowrap ${typeof value === "string" && value.length > 11 ? "text-[17px]" : "text-[22px]"} ${color}`}>{value}</span>
       {hint && <span className="truncate text-[13px] text-hint">{hint}</span>}
     </div>
   );

@@ -94,10 +94,10 @@ export default function MonthScreen() {
           </IconButton>
         </div>
         {data.error && <ErrorState error={data.error} onRetry={data.reload} />}
-        {!data.data && !data.error && <Skeleton className="h-72 w-full" />}
+        {(!data.data || data.data.month !== month) && !data.error && <Skeleton className="h-72 w-full" />}
         {data.data && data.data.month === month && <MonthCalendar data={data.data} onDay={(date) => nav.push("day", { date })} />}
       </Card>
-      {data.data && (
+      {data.data && data.data.month === month && (
         <>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <StatTile label={t("m.times_late")} value={data.data.totals.timesLate} tone={data.data.totals.timesLate ? "late" : "ok"} />

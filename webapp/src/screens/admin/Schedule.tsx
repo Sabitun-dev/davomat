@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Copy, Lock } from "lucide-react";
-import { minuteToHHMM, parseHHMM, shiftMonth } from "@shared/time.ts";
+import { minuteToHHMM, shiftMonth } from "@shared/time.ts";
 import { api, useApi } from "../../api.ts";
 import { dayLabel, monthName, useLang, useT, type Key } from "../../i18n/index.tsx";
 import { useNav } from "../../nav.tsx";
 import { confirm, haptic } from "../../telegram/tg.ts";
-import { Button, Card, Chip, ErrorState, Field, IconButton, Input, Page, SectionTitle, Segmented, Sheet, SkeletonScreen, errorText, useToast } from "../../ui/index.ts";
+import { Button, Card, Chip, ErrorState, Field, IconButton, Input, Page, SectionTitle, Segmented, Sheet, SkeletonScreen, TimeField, errorText, useToast } from "../../ui/index.ts";
 import { thisMonth } from "../worker/Month.tsx";
 
 interface WeekDay {
@@ -25,17 +25,7 @@ interface ScheduleData {
   days: { date: string; startMin: number | null; endMin: number | null; dayOff: boolean; holiday: boolean; overridden: boolean; note: string }[];
 }
 
-function TimeInput({ value, onChange, label }: { value: number | null; onChange: (m: number | null) => void; label: string }) {
-  return (
-    <Input
-      type="time"
-      aria-label={label}
-      value={value === null ? "" : minuteToHHMM(value)}
-      onChange={(e) => onChange(parseHHMM(e.target.value))}
-      className="tabular min-w-0 px-2 text-center"
-    />
-  );
-}
+const TimeInput = TimeField;
 
 export default function ScheduleScreen({ branchId, userId, name }: { branchId: number; userId?: number; name?: string }) {
   const t = useT();

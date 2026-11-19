@@ -14,6 +14,8 @@
   --app-hint: var(--tg-theme-hint-color, #6e6c7a);
   --app-sep: color-mix(in srgb, var(--app-hint) 18%, transparent);
   --app-accent: #6d4aff;
+  /* Filled buttons: white text on it passes AA in both themes. */
+  --app-accent-strong: #6d4aff;
   --app-accent-text: #ffffff;
   --app-accent-soft: color-mix(in srgb, var(--app-accent) 12%, var(--app-card));
   --app-shadow: 0 1px 2px rgb(20 16 40 / 0.04), 0 4px 16px rgb(20 16 40 / 0.06);
@@ -36,6 +38,7 @@
   --app-text: var(--tg-theme-text-color, #f2f1f6);
   --app-hint: var(--tg-theme-hint-color, #9a98a8);
   --app-accent: #8f78ff;
+  --app-accent-strong: #6a4cf5;
   --app-accent-text: #ffffff;
   --app-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 20px rgb(0 0 0 / 0.25);
 
@@ -58,6 +61,7 @@
   --color-hint: var(--app-hint);
   --color-sep: var(--app-sep);
   --color-accent: var(--app-accent);
+  --color-accent-strong: var(--app-accent-strong);
   --color-accent-ink: var(--app-accent-text);
   --color-accent-soft: var(--app-accent-soft);
   --color-ok: var(--st-green);
@@ -97,6 +101,7 @@
   100% { transform: translateX(100%); }
 }
 
+@layer base {
 html,
 body {
   background: var(--app-bg);
@@ -122,9 +127,11 @@ textarea {
   font: inherit;
   color: inherit;
 }
+}
 
 .safe-top {
-  padding-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px));
+  /* Added on top of the element padding (Telegram full-screen safe areas). */
+  margin-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px));
 }
 .safe-bottom {
   padding-bottom: calc(var(--tg-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 16px);

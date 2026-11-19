@@ -77,8 +77,10 @@ export default function WorkerReport({ userId, name, month: initial }: { userId:
       <Card>{days && table.data ? <MonthCalendar data={{ days, today: table.data.today }} onDay={setOpen} /> : <Skeleton className="h-72 w-full" />}</Card>
       {report.data && (
         <>
-          <div className="mt-3 grid grid-cols-2 gap-3">
+          <div className="mt-3">
             <StatTile label={t("r.salary")} value={money(sum("salary"))} hint={`${money(sum("earned"))} / ${money(sum("max"))}`} tone="accent" />
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
             <StatTile label={t("r.worked_hours")} value={hoursText(sum("workedMin"))} hint={`${t("r.days_worked")}: ${sum("daysWorked")}`} />
             <StatTile label={t("r.times_late")} value={sum("timesLate")} hint={t("c.min", { n: sum("lateMin") })} tone={sum("timesLate") ? "late" : undefined} />
             <StatTile label={t("r.absent")} value={sum("absent")} tone={sum("absent") ? "bad" : undefined} />

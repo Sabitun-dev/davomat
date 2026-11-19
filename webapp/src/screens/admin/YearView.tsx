@@ -82,8 +82,9 @@ export default function YearView() {
       {!d && !data.error && <Skeleton className="h-64 w-full rounded-[20px]" />}
       {d && total && (
         <div className="flex flex-col gap-3">
+          <StatTile label={t("r.year_total")} value={money(total.salary)} tone="accent" />
           <div className="grid grid-cols-2 gap-3">
-            <StatTile label={t("r.year_total")} value={money(total.salary)} tone="accent" />
+            <StatTile label={t("r.absent")} value={total.absent} tone={total.absent ? "bad" : undefined} />
             <StatTile label={t("r.times_late")} value={total.timesLate} hint={t("c.min", { n: total.lateMin })} tone={total.timesLate ? "late" : undefined} />
           </div>
           <MonthBars

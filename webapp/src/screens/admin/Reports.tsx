@@ -127,11 +127,12 @@ function MonthView() {
       {!r && !report.error && <Skeleton className="h-64 w-full rounded-[20px]" />}
       {r && (
         <>
-          <div className="grid grid-cols-2 gap-3">
-            <StatTile label={t("r.payroll_total")} value={money(r.company.salary)} tone="accent" />
+          <StatTile label={t("r.payroll_total")} value={money(r.company.salary)} tone="accent" />
+          <div className="mt-3 grid grid-cols-2 gap-3">
             <StatTile label={t("r.punctuality")} value={r.company.punctuality === null ? "—" : `${r.company.punctuality}%`} tone="ok" />
             <StatTile label={t("r.times_late")} value={r.company.timesLate} hint={t("c.min", { n: r.company.lateMin })} tone={r.company.timesLate ? "late" : undefined} />
             <StatTile label={t("r.absent")} value={r.company.absent} tone={r.company.absent ? "bad" : undefined} />
+            <StatTile label={t("r.worked_hours")} value={hoursText(r.company.workedMin)} />
           </div>
           {(r.company.missingAmounts > 0 || r.company.reviewDays > 0) && (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -195,10 +196,10 @@ function MonthView() {
                   </div>
                   <div className="mt-3 grid grid-cols-4 gap-2 text-center">
                     {[
-                      [t("r.days_worked"), w.daysWorked, ""],
+                      [t("r.short_days"), w.daysWorked, ""],
                       [t("r.absent"), w.absent, w.absent ? "text-bad" : ""],
                       [t("r.times_late"), w.timesLate, w.timesLate ? "text-late" : ""],
-                      [t("r.worked_hours"), hoursText(w.workedMin), ""],
+                      [t("r.short_hours"), hoursText(w.workedMin), ""],
                     ].map(([label, value, cls]) => (
                       <div key={String(label)} className="rounded-xl bg-bg px-1 py-2">
                         <div className={`tabular text-[16px] font-bold ${cls}`}>{value}</div>

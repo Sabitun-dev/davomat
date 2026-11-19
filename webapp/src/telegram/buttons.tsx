@@ -79,7 +79,7 @@ export function BottomActions(props: BottomActionsProps) {
   useEffect(() => {
     if (!nativeMain || !tg) return;
     const color =
-      props.tone === "danger" ? cssVar("--st-red", "#c8312f") : cssVar("--app-accent", "#6d4aff");
+      props.tone === "danger" ? cssVar("--st-red", "#c8312f") : cssVar("--app-accent-strong", "#6d4aff");
     tg.MainButton.setParams({
       text: props.text,
       color,

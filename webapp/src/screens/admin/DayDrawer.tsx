@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { CircleCheck, Pencil, Plus } from "lucide-react";
 import { formatMoney, moneyToInput } from "@shared/money.ts";
+import { minuteToHHMM, parseHHMM } from "@shared/time.ts";
 import type { EventType } from "@shared/attendance.ts";
 import { api, invalidate, useApi } from "../../api.ts";
 import { dayLabel, useLang, useT } from "../../i18n/index.tsx";
 import { useSession } from "../../session.tsx";
-import { Button, Field, Input, ListCard, ListRow, Segmented, SectionTitle, Select, Sheet, Skeleton, TextArea, errorText, useToast } from "../../ui/index.ts";
+import { Button, Field, Input, ListCard, ListRow, Segmented, SectionTitle, Select, Sheet, Skeleton, TextArea, TimeField, errorText, useToast } from "../../ui/index.ts";
 import { MoneyInput } from "../../ui/MoneyInput.tsx";
 import { DaySummary, EventList, type DayData } from "../DayView.tsx";
 import type { EventItem } from "../../types.ts";
@@ -138,7 +139,7 @@ export function DayDrawer({ userId, date, onClose }: { userId: number; date: str
           )}
           {(mode.kind === "add" || mode.kind === "edit") && (
             <Field label={t("d.event_time")}>
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="tabular" />
+              <TimeField label={t("d.event_time")} value={parseHHMM(time)} onChange={(m) => setTime(m === null ? time : minuteToHHMM(m))} />
             </Field>
           )}
           {mode.kind === "review" && d.result && (

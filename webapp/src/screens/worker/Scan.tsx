@@ -105,6 +105,8 @@ export default function Scan({ eventType }: { eventType: EventType }) {
   const startScan = useCallback(async () => {
     pending.current = null;
     setPhase({ kind: "scanning" });
+    // Screenshot review build only: pretend a branch QR was scanned.
+    if (import.meta.env.VITE_MOCK === "1") return void afterScan("q_1_1_000000000000000000000000");
     if (canNativeScan()) {
       const code = await nativeScan(t("s.scan_text"), (c) => {
         if (looksLikeBranchQr(c)) return true;

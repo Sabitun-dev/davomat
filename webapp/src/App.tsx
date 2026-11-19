@@ -23,7 +23,14 @@ function OpenInTelegram() {
 }
 
 function Stack() {
-  const { stack } = useNav();
+  const { stack, push } = useNav();
+  // Screenshot review build only: open ?screen=<name>&p=<json params> straight away.
+  useEffect(() => {
+    if (!MOCK) return;
+    const q = new URLSearchParams(location.search);
+    const screen = q.get("screen");
+    if (screen) push(screen, JSON.parse(q.get("p") ?? "{}"));
+  }, []);
   const top = stack[stack.length - 1];
   const Screen = screens[top.name];
   return (

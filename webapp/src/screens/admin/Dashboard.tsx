@@ -38,7 +38,7 @@ export function BranchChips({ value, onChange }: { value: number | null; onChang
         haptic.select();
         onChange(id);
       }}
-      className={`min-h-[40px] shrink-0 rounded-full px-4 text-[15px] font-semibold ${value === id ? "bg-accent text-accent-ink" : "bg-card text-ink shadow-soft"}`}
+      className={`min-h-[40px] shrink-0 rounded-full px-4 text-[15px] font-semibold ${value === id ? "bg-accent-strong text-accent-ink" : "bg-card text-ink shadow-soft"}`}
     >
       {label}
     </button>

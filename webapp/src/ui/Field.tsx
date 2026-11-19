@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { useEffect, useState, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { haptic } from "../telegram/tg.ts";
 
 export function Field({ label, hint, error, children }: { label?: ReactNode; hint?: ReactNode; error?: ReactNode; children: ReactNode }) {
@@ -34,10 +34,13 @@ export function Segmented<T extends string>({
   value,
   options,
   onChange,
+  compact,
 }: {
   value: T;
   options: { value: T; label: ReactNode }[];
   onChange: (v: T) => void;
+  /** Smaller text so 4 options fit on a 360 px phone. */
+  compact?: boolean;
 }) {
   return (
     <div className="flex rounded-2xl bg-sep p-1" role="tablist">
@@ -51,7 +54,7 @@ export function Segmented<T extends string>({
             haptic.select();
             onChange(o.value);
           }}
-          className={`min-h-[40px] flex-1 rounded-xl px-2 text-[15px] font-semibold transition ${
+          className={`min-h-[40px] min-w-0 flex-1 truncate rounded-xl font-semibold transition ${compact ? "px-1 text-[13px]" : "px-2 text-[15px]"} ${
             o.value === value ? "bg-card text-ink shadow-soft" : "text-hint"
           }`}
         >
@@ -136,5 +139,39 @@ export function Stepper({
         +
       </button>
     </div>
+  );
+}
+
+/** 24-hour "HH:MM" field. Typing "930" becomes "09:30". Reports minutes from midnight (or null). */
+export function TimeField({ value, onChange, label }: { value: number | null; onChange: (minute: number | null) => void; label: string }) {
+  const show = (m: number | null) => (m === null ? "" : `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+  const [text, setText] = useState(show(value));
+  useEffect(() => setText(show(value)), [value]);
+  const parse = (raw: string): number | null => {
+    const digits = raw.replace(/\D/g, "").slice(0, 4);
+    if (!digits) return null;
+    const padded = digits.length <= 2 ? `${digits.padStart(2, "0")}00` : digits.padStart(4, "0");
+    const h = Number(padded.slice(0, 2));
+    const m = Number(padded.slice(2));
+    return h <= 23 && m <= 59 ? h * 60 + m : null;
+  };
+  return (
+    <input
+      aria-label={label}
+      inputMode="numeric"
+      placeholder="09:00"
+      value={text}
+      maxLength={5}
+      onChange={(e) => {
+        const d = e.target.value.replace(/\D/g, "").slice(0, 4);
+        setText(d.length > 2 ? `${d.slice(0, 2)}:${d.slice(2)}` : d);
+      }}
+      onBlur={() => {
+        const m = parse(text);
+        setText(show(m ?? value));
+        if (m !== null) onChange(m);
+      }}
+      className={`${inputCls} tabular min-w-0 px-2 text-center`}
+    />
   );
 }

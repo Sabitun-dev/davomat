@@ -45,6 +45,7 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^1.76.0",
     "pglite-prisma-adapter": "^0.7.2",
+    "playwright-core": "^1.65.1",
     "prisma": "^7.10.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

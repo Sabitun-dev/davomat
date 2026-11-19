@@ -418,6 +418,7 @@ export const uz = {
 
   // Amounts
   "amt.title": "Kunlik summalar",
+  "amt.short": "Summalar",
   "amt.bulk": "Tanlanganlarga to'ldirish",
   "amt.bulk_text": "Tanlangan xodimlar uchun shu oyning har ish kuniga summa",
   "amt.bulk_ok": "To'ldirish",
@@ -435,6 +436,8 @@ export const uz = {
   "r.worker": "Xodim",
   "r.all_workers": "Barcha xodimlar",
   "r.days_worked": "Ishlagan kun",
+  "r.short_days": "Kun",
+  "r.short_hours": "Soat",
   "r.absent": "Kelmagan",
   "r.times_late": "Kechikish",
   "r.late_min": "Kechikish, daq",
