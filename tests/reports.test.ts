@@ -35,7 +35,8 @@ beforeAll(async () => {
   const { user } = await makeWorker(branch.id, "Ali", 10000);
   userId = user.id;
   await db().branchMember.updateMany({ where: { userId }, data: { joinedAt: new Date("2026-02-28") } });
-  // March 2026 by hand: Mon 2 = example A (90.00), Tue 3 on time (100.00), Wed 4 absent; rest of the month absent too.
+  // March 2026 by hand: Mon 2 = example A (90.00); Tue 3 in 08:55 out 19:00 = 600 + 5 min overtime
+  // = 100 x 605 / 600 = 100.83; every other working day absent.
   await ev(userId, "2026-03-02", "CHECK_IN", "09:30");
   await ev(userId, "2026-03-02", "CHECK_OUT", "18:30");
   await ev(userId, "2026-03-03", "CHECK_IN", "08:55");
@@ -57,12 +58,13 @@ describe("month report", () => {
       timesLate: 1,
       lateMin: 30,
       earlyMin: 30,
-      workedMin: 540 + 600,
-      earned: 9000 + 10000,
+      overtimeMin: 5,
+      workedMin: 540 + 605,
+      earned: 9000 + 10083,
       max: 26 * 10000,
       bonus: 2000,
       fine: 500,
-      salary: 19000 + 2000 - 500,
+      salary: 19083 + 2000 - 500,
     });
     expect(r.company.punctuality).toBe(50);
     expect(r.ranking[0]).toMatchObject({ userId, lateMin: 30 });
@@ -83,8 +85,8 @@ describe("month report", () => {
     expect(days.find((d) => d.date === "2026-03-08")?.status).toBe("DAY_OFF");
     const year = await yearReport(owner, 2026, branch.id);
     const march = year.months[2];
-    expect(march).toMatchObject({ earned: 19000, salary: 20500, lateMin: 30 });
-    expect(year.workers.find((w) => w.userId === userId)?.salary).toBe(20500);
+    expect(march).toMatchObject({ earned: 19083, salary: 20583, lateMin: 30, overtimeMin: 5 });
+    expect(year.workers.find((w) => w.userId === userId)?.salary).toBe(20583);
   });
 });
 
@@ -96,7 +98,7 @@ describe("exports", () => {
     expect(sheet).toContain("2026-03-02");
     expect(sheet).toContain("<v>90</v>");
     const payroll = await buildExport(owner, "payroll", "xlsx", "2026-03", branch.id, "uz");
-    expect(strFromU8(unzipSync(payroll.data)["xl/worksheets/sheet1.xml"])).toContain("<v>205</v>");
+    expect(strFromU8(unzipSync(payroll.data)["xl/worksheets/sheet1.xml"])).toContain("<v>205.83</v>");
   });
 
   it("CSV and PDF", async () => {

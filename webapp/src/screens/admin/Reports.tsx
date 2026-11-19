@@ -23,6 +23,7 @@ export interface Totals {
   lateMin: number;
   earlyMin: number;
   overageMin: number;
+  overtimeMin: number;
   workedMin: number;
   earned: number;
   max: number;

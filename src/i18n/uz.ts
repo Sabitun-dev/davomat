@@ -53,6 +53,7 @@ export const uz = {
   "col.late_min": "Kechikish, daq",
   "col.early_min": "Erta ketish, daq",
   "col.overage_min": "Ortiqcha tanaffus, daq",
+  "col.overtime_min": "Qo'shimcha ish, daq",
   "col.worked_hours": "Ishlagan soat",
   "col.earned": "Ishlab topilgan",
   "col.max": "Maksimal",

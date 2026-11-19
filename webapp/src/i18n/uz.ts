@@ -511,6 +511,12 @@ export const uz = {
   "co.section_checkin": "Keldi-ketdi",
   "co.section_video": "Guruh videosi",
   "co.section_bot": "Bot xabarlari",
+  "err.currency_locked": "Valyutani endi o'zgartirib bo'lmaydi: summalar allaqachon kiritilgan. Aks holda 250 000 so'm $2 500.00 bo'lib qolardi.",
+  "co.overtime": "Qo'shimcha ishlagan vaqtga ham to'lash",
+  "co.overtime_hint": "Smenadan ortiq ishlangan har daqiqa shu kunning stavkasida to'lanadi. Masalan: 12 soatlik smena 120$, 14 soat ishlasa 140$.",
+  "co.overtime_early": "Erta kelishni ham hisoblash",
+  "d.overtime": "Qo'shimcha ish",
+  "r.overtime_min": "Qo'shimcha ish, daq",
   "co.section_other": "Boshqa",
 } as const;
 

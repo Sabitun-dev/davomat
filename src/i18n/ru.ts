@@ -52,6 +52,7 @@ export const ru: Record<MessageKey, string> = {
   "col.late_min": "Опоздание, мин",
   "col.early_min": "Ранний уход, мин",
   "col.overage_min": "Сверх перерыва, мин",
+  "col.overtime_min": "Переработка, мин",
   "col.worked_hours": "Отработано, ч",
   "col.earned": "Заработано",
   "col.max": "Максимум",

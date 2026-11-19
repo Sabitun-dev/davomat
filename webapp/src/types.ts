@@ -36,6 +36,7 @@ export interface DayResult {
   earlyMin: number;
   breakMin: number;
   overageMin: number;
+  overtimeMin: number;
   workedMin: number;
   amount: number | null;
   earned: number;

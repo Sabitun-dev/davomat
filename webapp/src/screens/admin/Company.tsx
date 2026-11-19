@@ -13,6 +13,8 @@ type Settings = Record<string, number | boolean>;
 interface CompanyData {
   name: string;
   currency: "UZS" | "USD";
+  /** True once any amount is stored: the currency can no longer change. */
+  currencyLocked: boolean;
   settings: Settings;
 }
 
@@ -83,7 +85,8 @@ export default function CompanyScreen() {
         <Field label={t("co.name")}>
           <Input value={form.name} maxLength={80} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         </Field>
-        <Field label={t("co.currency")}>
+        <Field label={t("co.currency")} hint={form.currencyLocked ? t("err.currency_locked") : undefined}>
+          <div className={form.currencyLocked ? "pointer-events-none opacity-50" : ""} aria-disabled={form.currencyLocked}>
           <Segmented
             value={form.currency}
             onChange={(v) => setForm({ ...form, currency: v })}
@@ -92,8 +95,14 @@ export default function CompanyScreen() {
               { value: "USD", label: "USD $" },
             ]}
           />
+          </div>
         </Field>
       </div>
+      <SectionTitle>{t("d.overtime")}</SectionTitle>
+      <ListCard>
+        <Toggle label={t("co.overtime")} hint={t("co.overtime_hint")} checked={Boolean(form.settings.overtimeEnabled)} onChange={(v) => set("overtimeEnabled", v)} />
+        {Boolean(form.settings.overtimeEnabled) && toggle("overtimeIncludeEarly", "co.overtime_early")}
+      </ListCard>
       <SectionTitle>{t("co.section_checkin")}</SectionTitle>
       {numbers(NUMBERS)}
       <SectionTitle>{t("co.section_video")}</SectionTitle>

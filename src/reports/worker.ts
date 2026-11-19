@@ -22,6 +22,7 @@ export function resultJson(r: DailyResult) {
     earlyMin: r.earlyMin,
     breakMin: r.breakMin,
     overageMin: r.overageMin,
+    overtimeMin: r.overtimeMin,
     workedMin: r.workedMin,
     amount: r.amount,
     earned: finalEarned(r),

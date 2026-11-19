@@ -58,6 +58,17 @@ account connected to this GitHub repo.
    (or use a password generator, 40 letters and digits).
 3. **Deploys → Trigger deploy**. The build runs type checks, all tests, builds the app and applies the
    database migrations. If anything fails, Netlify keeps the previous version online.
+
+   **Database updates run only for the production deploy.** Netlify tells the build which kind of deploy
+   it is (`CONTEXT` = `production`, `deploy-preview` or `branch-deploy`). Only `production` (a push to
+   `main`) changes the database structure. Deploy previews (pull requests) and branch deploys skip this
+   step, so a half-finished change can never alter your live database.
+
+   Previews still *run* the app, and the app reads `DATABASE_URL`. To keep previews completely away from
+   real data: in Neon create a **branch** called `dev` (Branches → New branch), then in Netlify open
+   `DATABASE_URL` and `DATABASE_URL_UNPOOLED` → **Edit → Different value for each deploy context**, and
+   put the `dev` branch strings under *Deploy Previews* and *Branch deploys*. Production keeps the main
+   strings. (If you never open preview links, you can skip this.)
 4. Note your site address, e.g. `https://davomat-xyz.netlify.app`.
 
 ### Step 4 — Register the Mini App
@@ -132,12 +143,24 @@ scheduled = end - start
 late      = 0 if arrived by start + grace, else minutes after start (or after grace, by setting)
 early     = minutes left before end
 overage   = break minutes over the daily allowance (breaks only count inside working hours)
-worked    = scheduled - late - early - overage   (never below 0, never above scheduled)
-earned    = daily amount × worked / scheduled    (rounded half up to 1 so'm / 1 cent)
+inside    = scheduled - late - early - overage        (never below 0, never above scheduled)
+overtime  = minutes before start + minutes after end, minus breaks taken in those minutes
+worked    = inside + overtime
+earned    = daily amount × worked / scheduled         (rounded half up to 1 so'm / 1 cent)
 ```
-Arriving early or staying late adds nothing (overtime is off). No check-in on a working day = absent.
+**Work less, earn less; work more, earn more.** Extra time is paid at the same per-minute rate as the
+shift. Example: a 12-hour shift (08:00–20:00) is worth $120 that day; the worker stays until 22:00 →
+14 hours → 120 × 840 / 720 = **$140**. Coming 30 minutes late and staying 30 minutes longer evens out.
+
+Two settings in **Kompaniya sozlamalari → Qo'shimcha ish** (both on by default):
+- *Qo'shimcha ishlagan vaqtga ham to'lash* — off = the original rule: early arrival and late leaving add nothing.
+- *Erta kelishni ham hisoblash* — off = only staying after the end counts (arriving before the start does not).
+  The earliest check-in (3 h before start) limits how early anyone can start.
+
+A day closed automatically (no check-out) never earns overtime. No check-in on a working day = absent.
 No check-out = the day closes itself at the scheduled end 2 hours later and is marked *needs review*.
-Final salary = sum of earned + bonuses − fines. All spec examples A–I are automatic tests.
+Final salary = sum of earned + bonuses − fines. Spec examples A–I are automatic tests (with overtime
+off, as the spec defines them), plus tests for the overtime rule above.
 
 The daily amount for a day is the number in the **Summalar** grid, or, if that cell is empty, the
 worker's default amount. A day off with a check-in is an "extra day", paid only if you put an amount in
@@ -179,7 +202,7 @@ attempts per 5 minutes (10). Per branch: radius, grace and grace mode, break all
 
 ```
 npm install          # also prepares the database client
-npm test             # 112 tests; they use an in-memory Postgres (PGlite), no setup needed
+npm test             # 121 tests; they use an in-memory Postgres (PGlite), no setup needed
 npm run typecheck
 npm run build        # builds the Mini App into public/app/
 npm run screenshots  # design review: every screen, light/dark, 360/414 px -> screenshots/
@@ -205,17 +228,18 @@ Never edit a migration that is already applied.
 
 - **Night shifts** across midnight are not supported (a check-out after midnight is refused; the day
   auto-closes). The data model allows adding them later.
-- **Overtime pay** is a setting only; it is not calculated.
 - **Offline check-ins** are not possible by design (the server's time is the truth).
 - Schedule templates are not versioned: changing the weekly schedule recalculates the current month;
   past open months keep their numbers until someone presses *Oyni qayta hisoblash*. Lock months after
   payroll to be safe.
-- Changing the company currency does not convert stored amounts.
+- **Choose the currency (so'm or USD) before entering any money.** Amounts are stored as plain numbers,
+  so once a daily amount, default amount, bonus/fine or day result exists, the currency is locked and the
+  app explains why. (Otherwise 250 000 so'm would silently turn into $2 500.00.)
 - I could not test inside real Telegram or on real phones from here; that is what the checklist above is for.
 
 ## 6. Ideas for later
 
-Tasks, in-app chat, subscriptions (out of scope for v1, as agreed); night shifts; overtime pay; per-worker
+Tasks, in-app chat, subscriptions (out of scope for v1, as agreed); night shifts; per-worker
 salary types; leave/vacation requests; push of the monthly payslip to each worker; Telegram Stars or
 Click/Payme payouts; a public holiday calendar for Uzbekistan; face check on the round video; multi-company
 mode (every table already has `company_id`); a web dashboard for big screens.

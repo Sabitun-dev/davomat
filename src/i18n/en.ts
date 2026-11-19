@@ -51,6 +51,7 @@ export const en: Record<MessageKey, string> = {
   "col.late_min": "Late, min",
   "col.early_min": "Left early, min",
   "col.overage_min": "Break overage, min",
+  "col.overtime_min": "Overtime, min",
   "col.worked_hours": "Worked hours",
   "col.earned": "Earned",
   "col.max": "Max possible",

@@ -34,6 +34,7 @@ export function DaySummary({ day }: { day: DayData }) {
   if (r.earlyMin) rows.push([t("d.early"), t("c.min", { n: r.earlyMin }), "text-late"]);
   rows.push([t("w.break"), t("c.min", { n: r.breakMin })]);
   if (r.overageMin) rows.push([t("d.overage"), t("c.min", { n: r.overageMin }), "text-late"]);
+  if (r.overtimeMin) rows.push([t("d.overtime"), `+${t("c.min", { n: r.overtimeMin })}`, "text-ok"]);
   rows.push([t("d.worked"), `${Math.floor(r.workedMin / 60)}:${String(r.workedMin % 60).padStart(2, "0")}`]);
   rows.push([t("d.amount"), r.amount === null ? "—" : formatMoney(r.amount, me.company.currency, lang)]);
   return (

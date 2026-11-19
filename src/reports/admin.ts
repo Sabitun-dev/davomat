@@ -93,6 +93,7 @@ export interface WorkerMonthRow {
   lateMin: number;
   earlyMin: number;
   overageMin: number;
+  overtimeMin: number;
   workedMin: number;
   onTimeDays: number;
   earned: number;
@@ -112,6 +113,7 @@ function sumRows(results: DailyResult[]) {
     lateMin: results.reduce((s, r) => s + r.lateMin, 0),
     earlyMin: results.reduce((s, r) => s + r.earlyMin, 0),
     overageMin: results.reduce((s, r) => s + r.overageMin, 0),
+    overtimeMin: results.reduce((s, r) => s + r.overtimeMin, 0),
     workedMin: results.reduce((s, r) => s + r.workedMin, 0),
     onTimeDays: results.filter((r) => r.checkInAt !== null && r.lateMin === 0 && r.scheduledMin > 0).length,
     earned: results.reduce((s, r) => s + finalEarned(r), 0),
@@ -169,7 +171,7 @@ export async function monthReport(actor: Actor, month: string, branchId?: number
   const total = (list: WorkerMonthRow[]) => {
     const t = {
       workers: new Set(list.map((r) => r.userId)).size,
-      daysWorked: 0, absent: 0, timesLate: 0, lateMin: 0, earlyMin: 0, overageMin: 0, workedMin: 0,
+      daysWorked: 0, absent: 0, timesLate: 0, lateMin: 0, earlyMin: 0, overageMin: 0, overtimeMin: 0, workedMin: 0,
       onTimeDays: 0, earned: 0, max: 0, bonus: 0, fine: 0, salary: 0, missingAmounts: 0, reviewDays: 0,
     };
     for (const r of list) {

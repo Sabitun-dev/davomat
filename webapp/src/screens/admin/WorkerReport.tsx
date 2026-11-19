@@ -86,6 +86,7 @@ export default function WorkerReport({ userId, name, month: initial }: { userId:
             <StatTile label={t("r.absent")} value={sum("absent")} tone={sum("absent") ? "bad" : undefined} />
             <StatTile label={t("r.early_min")} value={t("c.min", { n: sum("earlyMin") })} />
             <StatTile label={t("r.overage_min")} value={t("c.min", { n: sum("overageMin") })} />
+            <StatTile label={t("r.overtime_min")} value={t("c.min", { n: sum("overtimeMin") })} tone={sum("overtimeMin") ? "ok" : undefined} />
           </div>
         </>
       )}

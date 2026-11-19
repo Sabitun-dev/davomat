@@ -172,7 +172,7 @@ export default function WorkerHome() {
           hint={
             <span className="block">
               <span className="mt-1 block h-2 overflow-hidden rounded-full bg-sep">
-                <span className="block h-full rounded-full bg-accent transition-all" style={{ width: `${Math.round(monthValue * 100)}%` }} />
+                <span className="block h-full rounded-full bg-accent transition-all" style={{ width: `${Math.min(100, Math.round(monthValue * 100))}%` }} />
               </span>
               <span className="mt-1.5 block">{t("w.month_max", { max: money(d.month.max) })}</span>
             </span>

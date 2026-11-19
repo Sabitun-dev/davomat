@@ -33,15 +33,15 @@ async function payrollTable(actor: Actor, month: string, branchId: number | unde
   const c = r.currency;
   const header = [
     "col.worker", "col.branch", "col.position", "col.days_worked", "col.absent", "col.times_late", "col.late_min",
-    "col.early_min", "col.overage_min", "col.worked_hours", "col.earned", "col.max", "col.bonus", "col.fine", "col.salary",
+    "col.early_min", "col.overage_min", "col.overtime_min", "col.worked_hours", "col.earned", "col.max", "col.bonus", "col.fine", "col.salary",
   ].map((k) => t(lang, k as MessageKey));
   const rows: Cell[][] = r.rows.map((w) => [
-    w.name, w.branchName, w.position, w.daysWorked, w.absent, w.timesLate, w.lateMin, w.earlyMin, w.overageMin,
+    w.name, w.branchName, w.position, w.daysWorked, w.absent, w.timesLate, w.lateMin, w.earlyMin, w.overageMin, w.overtimeMin,
     hours(w.workedMin), num(w.earned, c), num(w.max, c), num(w.bonus, c), num(w.fine, c), num(w.salary, c),
   ]);
   const s = r.company;
   rows.push([
-    t(lang, "col.total"), "", "", s.daysWorked, s.absent, s.timesLate, s.lateMin, s.earlyMin, s.overageMin,
+    t(lang, "col.total"), "", "", s.daysWorked, s.absent, s.timesLate, s.lateMin, s.earlyMin, s.overageMin, s.overtimeMin,
     hours(s.workedMin), num(s.earned, c), num(s.max, c), num(s.bonus, c), num(s.fine, c), num(s.salary, c),
   ]);
   return { header, rows, report: r };
@@ -60,12 +60,12 @@ async function attendanceTable(actor: Actor, month: string, branchId: number | u
   });
   const header = [
     "col.date", "col.worker", "col.branch", "col.status", "col.check_in", "col.check_out", "col.break", "col.late_min",
-    "col.early_min", "col.overage_min", "col.worked_min", "col.amount", "col.earned", "col.flags",
+    "col.early_min", "col.overage_min", "col.overtime_min", "col.worked_min", "col.amount", "col.earned", "col.flags",
   ].map((k) => t(lang, k as MessageKey));
   const time = (d: Date | null, tz: string) => (d ? minuteToHHMM(toLocal(d, tz).minute) : "");
   const rows: Cell[][] = results.map((r) => [
     r.date, displayName(r.user), r.branch.name, t(lang, `status.${r.status}` as MessageKey), time(r.checkInAt, r.branch.timezone),
-    time(r.checkOutAt, r.branch.timezone), r.breakMin, r.lateMin, r.earlyMin, r.overageMin, r.workedMin,
+    time(r.checkOutAt, r.branch.timezone), r.breakMin, r.lateMin, r.earlyMin, r.overageMin, r.overtimeMin, r.workedMin,
     r.amount === null ? null : num(r.amount, company.currency), num(finalEarned(r), company.currency), r.flags.join(" "),
   ]);
   return { header, rows };

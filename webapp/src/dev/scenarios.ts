@@ -307,5 +307,5 @@ export function registerScenarios() {
     { userId: 3, name: "Jasur Toshmatov", branchName: "Chilonzor", date: `${MONTH}-12`, flags: ["edge_after_fails", "repeated_coords"], status: "LATE" },
   ]);
   route(/^GET \/admin\/(adjustments|people)/, () => []);
-  route(/^GET \/admin\/company/, () => ({ name: "Sobitxon Savdo", currency: "UZS", settings: { gpsAccuracyLimitM: 50, geofenceToleranceM: 0, earliestCheckInMin: 180, autoCloseAfterMin: 120, videoBeforeMin: 15, videoAfterMin: 5, botReplyUnderVideo: false, flagMissingVideo: true, inviteExpiryDays: 7, gpsRetentionMonths: 12, rateLimitPer5Min: 10, remindCheckInAfterMin: 10, remindCheckOutAfterMin: 30, morningSummary: true, dailyFlagSummary: true, monthlyPayrollMessage: true } }));
+  route(/^GET \/admin\/company/, () => ({ name: "Sobitxon Savdo", currency: "UZS", currencyLocked: true, settings: { overtimeEnabled: true, overtimeIncludeEarly: true, gpsAccuracyLimitM: 50, geofenceToleranceM: 0, earliestCheckInMin: 180, autoCloseAfterMin: 120, videoBeforeMin: 15, videoAfterMin: 5, botReplyUnderVideo: false, flagMissingVideo: true, inviteExpiryDays: 7, gpsRetentionMonths: 12, rateLimitPer5Min: 10, remindCheckInAfterMin: 10, remindCheckOutAfterMin: 30, morningSummary: true, dailyFlagSummary: true, monthlyPayrollMessage: true } }));
 }

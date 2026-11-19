@@ -157,3 +157,42 @@ describe("pay engine details", () => {
     expect(r.earned).toBe(10000);
   });
 });
+
+describe("overtime (paid at the same per-minute rate)", () => {
+  const on = { enabled: true, includeEarly: true };
+  const shift12 = { startMin: hm("08:00"), endMin: hm("20:00") };
+
+  it("owner's example: 12 h shift for 120 USD, worked 14 h -> 140 USD", () => {
+    const r = computeDay(day({ schedule: shift12, amount: 12000, breakAllowanceMin: 0, overtime: on, events: [ev("CHECK_IN", "08:00"), ev("CHECK_OUT", "22:00")] }));
+    expect(r).toMatchObject({ overtimeMin: 120, workedMin: 840, earned: 14000 });
+  });
+
+  it("working less still pays less", () => {
+    const r = computeDay(day({ schedule: shift12, amount: 12000, overtime: on, events: [ev("CHECK_IN", "08:00"), ev("CHECK_OUT", "18:00")] }));
+    expect(r).toMatchObject({ overtimeMin: 0, workedMin: 600, earned: 10000 });
+  });
+
+  it("arriving 30 min late and staying 30 min longer evens out", () => {
+    const r = computeDay(day({ overtime: on, events: [ev("CHECK_IN", "09:30"), ev("CHECK_OUT", "19:30")] }));
+    expect(r).toMatchObject({ lateMin: 30, overtimeMin: 30, workedMin: 600, earned: 10000 });
+  });
+
+  it("early arrival counts only when that setting is on", () => {
+    const events = [ev("CHECK_IN", "08:00"), ev("CHECK_OUT", "19:00")];
+    expect(computeDay(day({ overtime: on, events })).overtimeMin).toBe(60);
+    expect(computeDay(day({ overtime: { enabled: true, includeEarly: false }, events })).overtimeMin).toBe(0);
+    expect(computeDay(day({ overtime: { enabled: false, includeEarly: true }, events })).earned).toBe(10000);
+  });
+
+  it("breaks taken after the scheduled end are not paid", () => {
+    const r = computeDay(
+      day({ overtime: on, events: [ev("CHECK_IN", "09:00"), ev("BREAK_START", "19:30"), ev("BREAK_END", "20:00"), ev("CHECK_OUT", "21:00")] }),
+    );
+    expect(r).toMatchObject({ overtimeMin: 90, workedMin: 690, earned: 11500 });
+  });
+
+  it("an auto-closed day (no check-out) never earns overtime", () => {
+    const r = computeDay(day({ overtime: on, events: [ev("CHECK_IN", "09:00"), { type: "CHECK_OUT", minute: hm("19:00"), auto: true }] }));
+    expect(r).toMatchObject({ overtimeMin: 0, earned: 10000, autoClosed: true });
+  });
+});

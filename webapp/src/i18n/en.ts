@@ -488,5 +488,11 @@ export const en: Record<Key, string> = {
   "co.section_checkin": "Check in and out",
   "co.section_video": "Group video",
   "co.section_bot": "Bot messages",
+  "err.currency_locked": "The currency can't be changed any more: amounts are already saved. Otherwise 250 000 so'm would turn into $2,500.00.",
+  "co.overtime": "Pay for overtime",
+  "co.overtime_hint": "Every minute beyond the shift is paid at that day's rate. Example: a 12-hour shift is $120; working 14 hours pays $140.",
+  "co.overtime_early": "Count early arrival too",
+  "d.overtime": "Overtime",
+  "r.overtime_min": "Overtime, min",
   "co.section_other": "Other",
 };

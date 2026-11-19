@@ -29,8 +29,10 @@ export interface CompanySettings {
   morningSummary: boolean;
   dailyFlagSummary: boolean;
   monthlyPayrollMessage: boolean;
-  /** Not used in v1 pay; kept so it can be switched on later. */
+  /** Pay time worked outside the scheduled hours at the same per-minute rate. */
   overtimeEnabled: boolean;
+  /** With overtime on: also count arriving before the scheduled start. */
+  overtimeIncludeEarly: boolean;
 }
 
 export const DEFAULT_SETTINGS: CompanySettings = {
@@ -50,7 +52,8 @@ export const DEFAULT_SETTINGS: CompanySettings = {
   morningSummary: true,
   dailyFlagSummary: true,
   monthlyPayrollMessage: true,
-  overtimeEnabled: false,
+  overtimeEnabled: true,
+  overtimeIncludeEarly: true,
 };
 
 const LIMITS: Partial<Record<keyof CompanySettings, [number, number]>> = {

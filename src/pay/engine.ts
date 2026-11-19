@@ -1,4 +1,4 @@
-// The pay formula (spec section 6.3). Pure function: no database, no clock.
+// The pay formula (spec section 6.3, plus optional overtime). Pure function: no database, no clock.
 // All times are whole local minutes from midnight; seconds are already dropped.
 
 import type { EventType } from "../shared/attendance.ts";
@@ -28,6 +28,11 @@ export interface DayInput {
   nowMinute: number | null;
   /** Minutes after scheduled end when an open day is closed automatically (default 120). */
   autoCloseAfterMin: number;
+  /**
+   * Overtime: time worked outside the scheduled hours is paid at the same per-minute rate.
+   * Missing = off (the original spec rule: early arrival and late leaving add nothing).
+   */
+  overtime?: { enabled: boolean; includeEarly: boolean };
 }
 
 export interface DayOutput {
@@ -37,6 +42,8 @@ export interface DayOutput {
   earlyMin: number;
   breakMin: number;
   overageMin: number;
+  /** Paid minutes outside the scheduled hours (0 when overtime is off). */
+  overtimeMin: number;
   workedMin: number;
   earned: number;
   checkInMin: number | null;
@@ -96,6 +103,7 @@ function empty(status: DayStatus, scheduledMin: number, final: boolean): DayOutp
     earlyMin: 0,
     breakMin: 0,
     overageMin: 0,
+    overtimeMin: 0,
     workedMin: 0,
     earned: 0,
     checkInMin: null,
@@ -151,7 +159,8 @@ export function computeDay(input: DayInput): DayOutput {
   const autoClosed = closedBySystem || (realOut === null && (dayOver || nowMinute! >= autoCloseAt));
   const inProgress = realOut === null && !autoClosed;
 
-  // Check-out after end counts until end (no overtime); with no check-out the day closes at end.
+  // Inside the scheduled hours: late, early leaving and break overage are taken off.
+  // With no check-out the day closes at the scheduled end.
   // While still working, an open break counts until now (and never past the end).
   const openBreakEnd = realOut ?? (inProgress ? Math.min(nowMinute!, end) : end);
 
@@ -159,7 +168,17 @@ export function computeDay(input: DayInput): DayOutput {
   const early = realOut === null || closedBySystem ? 0 : Math.max(0, end - realOut);
   const breakMin = clippedTotal(breakSpans(events, openBreakEnd), start, end);
   const overage = Math.max(0, breakMin - input.breakAllowanceMin);
-  const worked = Math.min(scheduled, Math.max(0, scheduled - late - early - overage));
+  const inside = Math.min(scheduled, Math.max(0, scheduled - late - early - overage));
+  // Overtime: minutes before start (optional) and after a real check-out past the end,
+  // minus breaks taken in those minutes. Auto-closed days never earn overtime.
+  let overtime = 0;
+  if (input.overtime?.enabled) {
+    const spans = breakSpans(events, openBreakEnd);
+    if (input.overtime.includeEarly && checkIn < start) overtime += start - checkIn - clippedTotal(spans, checkIn, start);
+    if (realOut !== null && !closedBySystem && realOut > end) overtime += realOut - end - clippedTotal(spans, end, realOut);
+    overtime = Math.max(0, overtime);
+  }
+  const worked = inside + overtime;
   const earned = input.amount === null ? 0 : proportionalPay(input.amount, worked, scheduled);
 
   const flags: string[] = [];
@@ -173,6 +192,7 @@ export function computeDay(input: DayInput): DayOutput {
     earlyMin: early,
     breakMin,
     overageMin: overage,
+    overtimeMin: overtime,
     workedMin: worked,
     earned,
     checkInMin: checkIn,

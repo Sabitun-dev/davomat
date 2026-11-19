@@ -352,6 +352,7 @@ model DailyResult {
   earlyMin     Int       @default(0) @map("early_min")
   breakMin     Int       @default(0) @map("break_min")
   overageMin   Int       @default(0) @map("overage_min")
+  overtimeMin  Int       @default(0) @map("overtime_min")
   workedMin    Int       @default(0) @map("worked_min")
   /// Daily amount used for the day; null = not filled in.
   amount       Int?

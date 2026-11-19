@@ -25,7 +25,7 @@ export function finalEarned(r: Pick<DailyResult, "earned" | "manualEarned">): nu
 
 const COMPARED: (keyof DailyResult)[] = [
   "branchId", "status", "startMin", "endMin", "scheduledMin", "lateMin", "earlyMin", "breakMin",
-  "overageMin", "workedMin", "amount", "earned", "autoClosed", "needsReview", "finalized",
+  "overageMin", "overtimeMin", "workedMin", "amount", "earned", "autoClosed", "needsReview", "finalized",
 ];
 
 function same(a: DailyResult, b: Record<string, unknown>): boolean {
@@ -156,6 +156,7 @@ export async function recalcUserDays(
       events: dayEvents.map((e) => ({ type: e.type, minute: localMinute(e.serverTime, branch.timezone), auto: e.source === "AUTO" })),
       nowMinute: date === local.date ? local.minute : null,
       autoCloseAfterMin: settings.autoCloseAfterMin,
+      overtime: { enabled: settings.overtimeEnabled, includeEarly: settings.overtimeIncludeEarly },
     });
 
     // Flags from anti-cheat checks, corrections and the group-video link.
@@ -183,6 +184,7 @@ export async function recalcUserDays(
       earlyMin: res.earlyMin,
       breakMin: res.breakMin,
       overageMin: res.overageMin,
+      overtimeMin: res.overtimeMin,
       workedMin: res.workedMin,
       amount,
       earned: res.earned,
