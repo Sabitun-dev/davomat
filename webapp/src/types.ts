@@ -39,6 +39,7 @@ export interface DayResult {
   workedMin: number;
   amount: number | null;
   earned: number;
+  computedEarned: number;
   manualEarned: number | null;
   autoClosed: boolean;
   flags: string[];

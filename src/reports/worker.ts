@@ -25,6 +25,7 @@ export function resultJson(r: DailyResult) {
     workedMin: r.workedMin,
     amount: r.amount,
     earned: finalEarned(r),
+    computedEarned: r.earned,
     manualEarned: r.manualEarned,
     autoClosed: r.autoClosed,
     flags: r.flags,

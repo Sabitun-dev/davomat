@@ -32,7 +32,7 @@ function toResolved(slot: Slot & { holiday?: boolean }, source: ResolvedDay["sou
 
 export interface ScheduleRows {
   templates: (Slot & { userId: number | null; weekday: number })[];
-  overrides: (Slot & { userId: number | null; date: string; holiday: boolean })[];
+  overrides: (Slot & { userId: number | null; date: string; holiday: boolean; note?: string })[];
 }
 
 /** Pure resolver over pre-loaded rows. */

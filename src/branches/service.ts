@@ -14,6 +14,7 @@ import { db, transaction } from "../lib/db.ts";
 import { env } from "../lib/env.ts";
 import { badRequest, notFound } from "../lib/errors.ts";
 import { isValidTimeZone } from "../shared/time.ts";
+import { recalcCurrentMonth } from "../pay/recalc.ts";
 import { displayName } from "../users/service.ts";
 import type { Branch } from "../generated/prisma/client.ts";
 
@@ -134,6 +135,8 @@ export async function updateBranch(actor: Actor, branchId: number, raw: Record<s
       before,
       after,
     });
+    const payRules = before.graceMin !== after.graceMin || before.graceMode !== after.graceMode || before.breakAllowanceMin !== after.breakAllowanceMin;
+    if (payRules || before.timezone !== after.timezone) await recalcCurrentMonth(tx, branchId);
     return after;
   });
 }
@@ -255,6 +258,7 @@ export async function updateMember(actor: Actor, memberId: number, raw: Record<s
       before,
       after,
     });
+    if (before.defaultDailyAmount !== after.defaultDailyAmount) await recalcCurrentMonth(tx, before.branchId, [before.userId]);
     return after;
   });
 }

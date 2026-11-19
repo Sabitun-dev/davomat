@@ -8,6 +8,7 @@ import { requireTelegram, type AppEnv } from "./context.ts";
 import { branchRoutes } from "./routes/branches.ts";
 import { inviteRoutes } from "./routes/invites.ts";
 import { meRoutes } from "./routes/me.ts";
+import { payRoutes } from "./routes/pay.ts";
 import { publicRoutes } from "./routes/public.ts";
 import { workerRoutes } from "./routes/worker.ts";
 
@@ -41,6 +42,7 @@ export function createApp() {
   app.route("/invites", inviteRoutes);
   app.route("/worker", workerRoutes);
   app.route("/admin", branchRoutes);
+  app.route("/admin", payRoutes);
 
   return app;
 }
