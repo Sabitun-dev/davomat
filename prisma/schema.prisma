@@ -1,0 +1,460 @@
+// Davomat database schema.
+// Times are stored in UTC. "Local" dates are plain strings "YYYY-MM-DD" in the branch time zone,
+// so a day never shifts when it is read from another time zone.
+// Money is stored as whole integers: so'm, or US cents.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  runtime  = "nodejs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  WORKER
+}
+
+enum Currency {
+  UZS
+  USD
+}
+
+enum QrMode {
+  STATIC
+  ROTATING
+}
+
+enum GraceMode {
+  FULL
+  AFTER_GRACE
+}
+
+enum EventType {
+  CHECK_IN
+  BREAK_START
+  BREAK_END
+  CHECK_OUT
+}
+
+enum EventStatus {
+  ACCEPTED
+  REJECTED
+}
+
+enum EventSource {
+  APP
+  ADMIN
+  AUTO
+}
+
+enum DayStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  ON_TIME
+  LATE
+  ABSENT
+  DAY_OFF
+  EXTRA_DAY
+}
+
+enum AdjustmentKind {
+  BONUS
+  FINE
+}
+
+/// Key/value settings for the whole installation (bot username etc.).
+model AppConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_config")
+}
+
+model Company {
+  id        Int      @id @default(autoincrement())
+  name      String
+  currency  Currency @default(UZS)
+  /// See src/lib/settings.ts for the shape and defaults.
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  memberships Membership[]
+  branches    Branch[]
+  adjustments Adjustment[]
+  monthLocks  MonthLock[]
+  auditLog    AuditLog[]
+
+  @@map("companies")
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  telegramId      BigInt    @unique @map("telegram_id")
+  firstName       String    @default("") @map("first_name")
+  lastName        String    @default("") @map("last_name")
+  username        String?
+  /// Name the worker confirmed in the app.
+  fullName        String?   @map("full_name")
+  phone           String?
+  language        String    @default("uz")
+  consentAt       DateTime? @map("consent_at")
+  nameConfirmedAt DateTime? @map("name_confirmed_at")
+  /// Roles whose intro was seen or skipped, e.g. ["worker","admin"].
+  introSeen       String[]  @default([]) @map("intro_seen")
+  writeAccess     Boolean   @default(false) @map("write_access")
+  botBlocked      Boolean   @default(false) @map("bot_blocked")
+  lastSeenAt      DateTime? @map("last_seen_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  memberships   Membership[]
+  adminBranches AdminBranch[]
+  branchMembers BranchMember[]
+  events        AttendanceEvent[]
+  results       DailyResult[]
+  amounts       DailyAmount[]
+  adjustments   Adjustment[]  @relation("AdjustmentUser")
+
+  @@map("users")
+}
+
+model Membership {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  companyId Int      @map("company_id")
+  role      Role
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([userId, companyId])
+  @@map("memberships")
+}
+
+model AdminBranch {
+  id       Int @id @default(autoincrement())
+  userId   Int @map("user_id")
+  branchId Int @map("branch_id")
+
+  user   User   @relation(fields: [userId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@unique([userId, branchId])
+  @@map("admin_branches")
+}
+
+model Branch {
+  id                Int       @id @default(autoincrement())
+  companyId         Int       @map("company_id")
+  name              String
+  address           String    @default("")
+  lat               Float
+  lng               Float
+  radiusM           Int       @default(25) @map("radius_m")
+  timezone          String    @default("Asia/Tashkent")
+  qrVersion         Int       @default(1) @map("qr_version")
+  qrMode            QrMode    @default(STATIC) @map("qr_mode")
+  breakAllowanceMin Int       @default(60) @map("break_allowance_min")
+  graceMin          Int       @default(0) @map("grace_min")
+  graceMode         GraceMode @default(FULL) @map("grace_mode")
+  active            Boolean   @default(true)
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  company   Company            @relation(fields: [companyId], references: [id])
+  admins    AdminBranch[]
+  members   BranchMember[]
+  invites   Invite[]
+  devices   DisplayDevice[]
+  templates ScheduleTemplate[]
+  overrides ScheduleOverride[]
+  amounts   DailyAmount[]
+  events    AttendanceEvent[]
+  results   DailyResult[]
+
+  @@index([companyId])
+  @@map("branches")
+}
+
+model BranchMember {
+  id                 Int       @id @default(autoincrement())
+  branchId           Int       @map("branch_id")
+  userId             Int       @map("user_id")
+  active             Boolean   @default(true)
+  defaultDailyAmount Int?      @map("default_daily_amount")
+  position           String    @default("")
+  joinedAt           DateTime  @default(now()) @map("joined_at")
+  leftAt             DateTime? @map("left_at")
+
+  branch Branch @relation(fields: [branchId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([branchId, userId])
+  @@index([userId])
+  @@map("branch_members")
+}
+
+model Invite {
+  id          Int       @id @default(autoincrement())
+  token       String    @unique
+  branchId    Int       @map("branch_id")
+  /// WORKER or ADMIN. Only the owner can make admin invites.
+  role        Role      @default(WORKER)
+  expiresAt   DateTime  @map("expires_at")
+  /// null = multi-use.
+  maxUses     Int?      @map("max_uses")
+  uses        Int       @default(0)
+  createdById Int       @map("created_by")
+  revokedAt   DateTime? @map("revoked_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@map("invites")
+}
+
+/// A tablet at the branch that shows the rotating QR.
+model DisplayDevice {
+  id          Int       @id @default(autoincrement())
+  branchId    Int       @map("branch_id")
+  name        String
+  /// sha256 of the device key; the key itself is shown to the admin once.
+  keyHash     String    @unique @map("key_hash")
+  createdById Int       @map("created_by")
+  revokedAt   DateTime? @map("revoked_at")
+  lastSeenAt  DateTime? @map("last_seen_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@map("display_devices")
+}
+
+/// Weekly template. userId null = the branch template; set = a worker's own hours.
+/// weekday: 1 = Monday ... 7 = Sunday. Times are minutes from local midnight.
+model ScheduleTemplate {
+  id       Int     @id @default(autoincrement())
+  branchId Int     @map("branch_id")
+  userId   Int?    @map("user_id")
+  weekday  Int
+  startMin Int?    @map("start_min")
+  endMin   Int?    @map("end_min")
+  dayOff   Boolean @default(false) @map("day_off")
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([branchId, userId])
+  @@map("schedule_templates")
+}
+
+/// One day that differs from the template (holiday, short day, day off).
+model ScheduleOverride {
+  id       Int     @id @default(autoincrement())
+  branchId Int     @map("branch_id")
+  userId   Int?    @map("user_id")
+  date     String
+  startMin Int?    @map("start_min")
+  endMin   Int?    @map("end_min")
+  dayOff   Boolean @default(false) @map("day_off")
+  holiday  Boolean @default(false)
+  note     String  @default("")
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([branchId, date])
+  @@map("schedule_overrides")
+}
+
+model DailyAmount {
+  id       Int    @id @default(autoincrement())
+  userId   Int    @map("user_id")
+  branchId Int    @map("branch_id")
+  date     String
+  amount   Int
+
+  user   User   @relation(fields: [userId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@unique([userId, branchId, date])
+  @@index([branchId, date])
+  @@map("daily_amounts")
+}
+
+model AttendanceEvent {
+  id             Int         @id @default(autoincrement())
+  companyId      Int         @map("company_id")
+  userId         Int         @map("user_id")
+  /// null when the QR could not be read as any branch.
+  branchId       Int?        @map("branch_id")
+  localDate      String      @map("local_date")
+  type           EventType
+  serverTime     DateTime    @map("server_time")
+  lat            Float?
+  lng            Float?
+  accuracy       Float?
+  distanceM      Int?        @map("distance_m")
+  status         EventStatus
+  rejectReason   String?     @map("reject_reason")
+  idempotencyKey String      @unique @map("idempotency_key")
+  deviceId       String?     @map("device_id")
+  userAgent      String?     @map("user_agent")
+  source         EventSource @default(APP)
+  /// Removed by an admin correction (kept for history).
+  voided         Boolean     @default(false)
+  flags          String[]    @default([])
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  user      User       @relation(fields: [userId], references: [id])
+  branch    Branch?    @relation(fields: [branchId], references: [id])
+  videoNote VideoNote?
+
+  @@index([userId, localDate])
+  @@index([branchId, localDate])
+  @@index([userId, createdAt])
+  @@index([deviceId, localDate])
+  @@map("attendance_events")
+}
+
+model VideoNote {
+  id             Int      @id @default(autoincrement())
+  chatId         BigInt   @map("chat_id")
+  messageId      Int      @map("message_id")
+  userTelegramId BigInt   @map("user_telegram_id")
+  userId         Int?     @map("user_id")
+  sentAt         DateTime @map("sent_at")
+  linkedEventId  Int?     @unique @map("linked_event_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  linkedEvent AttendanceEvent? @relation(fields: [linkedEventId], references: [id])
+
+  @@unique([chatId, messageId])
+  @@index([userId, sentAt])
+  @@map("video_notes")
+}
+
+/// One row per worker per day, rebuilt by src/pay/recalc.ts whenever its inputs change.
+model DailyResult {
+  id           Int       @id @default(autoincrement())
+  userId       Int       @map("user_id")
+  branchId     Int       @map("branch_id")
+  date         String
+  status       DayStatus
+  startMin     Int?      @map("start_min")
+  endMin       Int?      @map("end_min")
+  scheduledMin Int       @default(0) @map("scheduled_min")
+  lateMin      Int       @default(0) @map("late_min")
+  earlyMin     Int       @default(0) @map("early_min")
+  breakMin     Int       @default(0) @map("break_min")
+  overageMin   Int       @default(0) @map("overage_min")
+  workedMin    Int       @default(0) @map("worked_min")
+  /// Daily amount used for the day; null = not filled in.
+  amount       Int?
+  /// Computed by the formula.
+  earned       Int       @default(0)
+  /// Set by an admin correction; replaces `earned` when present.
+  manualEarned Int?      @map("manual_earned")
+  checkInAt    DateTime? @map("check_in_at")
+  checkOutAt   DateTime? @map("check_out_at")
+  autoClosed   Boolean   @default(false) @map("auto_closed")
+  flags        String[]  @default([])
+  needsReview  Boolean   @default(false) @map("needs_review")
+  reviewedAt   DateTime? @map("reviewed_at")
+  reviewedById Int?      @map("reviewed_by")
+  /// The day is over and absence/auto-close has been decided.
+  finalized    Boolean   @default(false)
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@unique([userId, date])
+  @@index([branchId, date])
+  @@map("daily_results")
+}
+
+model Adjustment {
+  id          Int            @id @default(autoincrement())
+  companyId   Int            @map("company_id")
+  userId      Int            @map("user_id")
+  /// "YYYY-MM"
+  month       String
+  kind        AdjustmentKind
+  amount      Int
+  comment     String
+  createdById Int            @map("created_by")
+  voided      Boolean        @default(false)
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  user    User    @relation("AdjustmentUser", fields: [userId], references: [id])
+
+  @@index([companyId, month])
+  @@map("adjustments")
+}
+
+model MonthLock {
+  id         Int      @id @default(autoincrement())
+  companyId  Int      @map("company_id")
+  month      String
+  lockedById Int      @map("locked_by")
+  lockedAt   DateTime @default(now()) @map("locked_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, month])
+  @@map("month_locks")
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  companyId   Int      @map("company_id")
+  actorUserId Int?     @map("actor_user_id")
+  action      String
+  entity      String
+  entityId    String   @map("entity_id")
+  before      Json?
+  after       Json?
+  comment     String   @default("")
+  at          DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@index([companyId, entity, entityId])
+  @@map("audit_log")
+}
+
+model NotificationSent {
+  id     Int      @id @default(autoincrement())
+  chatId BigInt   @map("chat_id")
+  kind   String
+  /// Usually the local date; one message per kind per chat per key.
+  dayKey String   @map("day_key")
+  ok     Boolean  @default(true)
+  sentAt DateTime @default(now()) @map("sent_at")
+
+  @@unique([kind, chatId, dayKey])
+  @@map("notifications_sent")
+}
+
+model ProcessedUpdate {
+  updateId BigInt   @id @map("update_id")
+  at       DateTime @default(now())
+
+  @@map("processed_updates")
+}
+
+model SchedulerRun {
+  id         Int       @id @default(autoincrement())
+  startedAt  DateTime  @default(now()) @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+  ok         Boolean   @default(false)
+  summary    Json?
+
+  @@map("scheduler_runs")
+}

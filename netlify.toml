@@ -1,0 +1,38 @@
+# Netlify reads this file on every deploy.
+# If any step of the build command fails, Netlify keeps the previous version live.
+
+[build]
+  command = "npm run netlify-build"
+  publish = "public"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"
+  # The PDF exports need a font with Uzbek and Russian letters.
+  included_files = [
+    "node_modules/dejavu-fonts-ttf/ttf/DejaVuSans.ttf",
+    "node_modules/dejavu-fonts-ttf/ttf/DejaVuSans-Bold.ttf",
+  ]
+
+# The Mini App is a single-page app: every /app/... address loads the same page.
+[[redirects]]
+  from = "/app/*"
+  to = "/app/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/"
+  to = "/app/"
+  status = 302
+
+[[headers]]
+  for = "/app/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/app/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
