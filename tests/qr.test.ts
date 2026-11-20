@@ -66,3 +66,13 @@ describe("QR tokens", () => {
     expect(parseToken(SECRET, forged)).toBeNull();
   });
 });
+
+import { videoLink } from "../src/video/service.ts";
+
+describe("group video links", () => {
+  it("normal supergroup and forum topic", () => {
+    expect(videoLink(-1001234567890n, 45)).toBe("https://t.me/c/1234567890/45");
+    expect(videoLink(-1001234567890n, 45, 7)).toBe("https://t.me/c/1234567890/7/45");
+    expect(videoLink(-123n, 45)).toBeNull();
+  });
+});

@@ -329,6 +329,8 @@ model VideoNote {
   id             Int      @id @default(autoincrement())
   chatId         BigInt   @map("chat_id")
   messageId      Int      @map("message_id")
+  /// Topic id when the group is a forum (group with topics); null otherwise.
+  threadId       Int?     @map("thread_id")
   userTelegramId BigInt   @map("user_telegram_id")
   userId         Int?     @map("user_id")
   sentAt         DateTime @map("sent_at")

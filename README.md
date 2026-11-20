@@ -88,6 +88,10 @@ the bot commands and the **"Ochish"** menu button. Every line should be ✅. Ope
 
 ### Step 6 — Connect the group
 
+**Forum groups (groups with topics) work too.** A forum is a supergroup: its ID is a normal `-100…`
+number, videos in any topic are linked, "Videoni ochish" opens the video inside its topic, and the bot
+answers in the topic where you write. Send `/groupid` in any topic.
+
 1. Add the bot to your bosses-and-workers group (it should be a **supergroup**; Telegram turns a group
    into one automatically when you change certain settings, e.g. "Chat history for new members: Visible").
 2. If you did not disable privacy in Step 1, make the bot a group admin.
@@ -229,7 +233,7 @@ attempts per 5 minutes (10). Per branch: radius, grace and grace mode, break all
 
 ```
 npm install          # also prepares the database client
-npm test             # 127 tests; they use an in-memory Postgres (PGlite), no setup needed
+npm test             # 128 tests; they use an in-memory Postgres (PGlite), no setup needed
 npm run typecheck
 npm run build        # builds the Mini App into public/app/
 npm run screenshots  # design review: every screen, light/dark, 360/414 px -> screenshots/

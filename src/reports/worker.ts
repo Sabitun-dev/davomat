@@ -35,7 +35,7 @@ export function resultJson(r: DailyResult) {
   };
 }
 
-type EventWithVideo = AttendanceEvent & { videoNote?: { chatId: bigint; messageId: number } | null; branch?: { name: string } | null };
+type EventWithVideo = AttendanceEvent & { videoNote?: { chatId: bigint; messageId: number; threadId: number | null } | null; branch?: { name: string } | null };
 
 export function eventJson(e: EventWithVideo, tz: string) {
   return {
@@ -50,7 +50,7 @@ export function eventJson(e: EventWithVideo, tz: string) {
     rejectReason: e.rejectReason,
     voided: e.voided,
     flags: e.flags,
-    videoUrl: e.videoNote ? videoLink(e.videoNote.chatId, e.videoNote.messageId) : null,
+    videoUrl: e.videoNote ? videoLink(e.videoNote.chatId, e.videoNote.messageId, e.videoNote.threadId) : null,
     branchName: e.branch?.name ?? null,
   };
 }

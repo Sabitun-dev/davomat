@@ -62,7 +62,11 @@ export async function replyUnderVideo(eventId: number): Promise<void> {
       distance: event.distanceM ?? 0,
       late,
     });
-    await telegram().sendMessage(Number(video.chatId), text, { reply_parameters: { message_id: video.messageId, allow_sending_without_reply: true } });
+    // In a forum the reply stays in the video's topic.
+    await telegram().sendMessage(Number(video.chatId), text, {
+      reply_parameters: { message_id: video.messageId, allow_sending_without_reply: true },
+      ...(video.threadId ? { message_thread_id: video.threadId } : {}),
+    });
   } catch (err) {
     logError("video reply", err);
   }

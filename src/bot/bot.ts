@@ -49,7 +49,9 @@ export function createBot(botInfo?: UserFromGetMe): Bot {
   bot.command("groupid", async (ctx) => {
     const lang = await languageOf(ctx);
     if (ctx.chat.type === "private") return void (await ctx.reply(t(lang, "bot.groupid_private")));
-    await ctx.reply(t(lang, "bot.groupid", { id: String(ctx.chat.id) }));
+    // In a forum (group with topics) answer inside the topic where /groupid was sent.
+    const thread = ctx.message?.is_topic_message ? ctx.message.message_thread_id : undefined;
+    await ctx.reply(t(lang, "bot.groupid", { id: String(ctx.chat.id) }), thread ? { message_thread_id: thread } : {});
   });
 
   // The phone number arrives as a contact message after the Mini App calls requestContact.
@@ -78,6 +80,7 @@ export function createBot(botInfo?: UserFromGetMe): Bot {
     const linked = await onGroupVideoNote({
       chatId: BigInt(ctx.chat.id),
       messageId: ctx.message.message_id,
+      threadId: ctx.message.is_topic_message ? (ctx.message.message_thread_id ?? null) : null,
       fromTelegramId: BigInt(ctx.from.id),
       sentAt: new Date(ctx.message.date * 1000),
     });

@@ -117,9 +117,10 @@ describe("scheduler", () => {
     await db().company.updateMany({ data: { settings: { botReplyUnderVideo: true } } });
     const b = await freshBranch("Filial X");
     const { user } = await makeWorker(b.id, "Replied", 10000);
-    await onGroupVideoNote({ chatId: -1009n, messageId: 77, fromTelegramId: user.telegramId, sentAt: at("09:05") });
+    await onGroupVideoNote({ chatId: -1009n, messageId: 77, threadId: 5, fromTelegramId: user.telegramId, sentAt: at("09:05") });
     await checkIn(user, b, at("09:07"));
     const reply = sent.find((s) => s.replyTo === 77);
+    expect(reply?.threadId).toBe(5);
     expect(reply?.text).toMatch(/✅ Keldi 09:07 · Filial X · \d+ m · 7 daq kechikdi/);
     await db().company.updateMany({ data: { settings: {} } });
   });

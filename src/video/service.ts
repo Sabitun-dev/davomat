@@ -46,6 +46,8 @@ export async function linkVideoToEvent(tx: Tx, event: AttendanceEvent, settings:
 export async function onGroupVideoNote(input: {
   chatId: bigint;
   messageId: number;
+  /** Forum topic of the video, if any. */
+  threadId?: number | null;
   fromTelegramId: bigint;
   sentAt: Date;
 }): Promise<{ videoId: number; linkedEvent: AttendanceEvent | null } | null> {
@@ -56,6 +58,7 @@ export async function onGroupVideoNote(input: {
       data: {
         chatId: input.chatId,
         messageId: input.messageId,
+        threadId: input.threadId ?? null,
         userTelegramId: input.fromTelegramId,
         userId: user?.id ?? null,
         sentAt: input.sentAt,
@@ -100,9 +103,9 @@ export async function onGroupVideoNote(input: {
   });
 }
 
-/** https://t.me/c/<id>/<message> for a supergroup (-100… ids). */
-export function videoLink(chatId: bigint, messageId: number): string | null {
+/** https://t.me/c/<id>/<message> for a supergroup (-100… ids); in a forum topic t.me/c/<id>/<topic>/<message>. */
+export function videoLink(chatId: bigint, messageId: number, threadId?: number | null): string | null {
   const s = chatId.toString();
   if (!s.startsWith("-100")) return null;
-  return `https://t.me/c/${s.slice(4)}/${messageId}`;
+  return threadId ? `https://t.me/c/${s.slice(4)}/${threadId}/${messageId}` : `https://t.me/c/${s.slice(4)}/${messageId}`;
 }

@@ -24,12 +24,12 @@ export function setTestEnv(): void {
 }
 
 /** Every message the bot "sent" during a test. */
-export const sent: { method: string; chatId: number; text?: string; filename?: string; replyTo?: number }[] = [];
+export const sent: { method: string; chatId: number; text?: string; filename?: string; replyTo?: number; threadId?: number }[] = [];
 
 function fakeTelegram() {
   return {
-    sendMessage: async (chatId: number, text: string, extra?: { reply_parameters?: { message_id: number } }) => {
-      sent.push({ method: "sendMessage", chatId, text, replyTo: extra?.reply_parameters?.message_id });
+    sendMessage: async (chatId: number, text: string, extra?: { reply_parameters?: { message_id: number }; message_thread_id?: number }) => {
+      sent.push({ method: "sendMessage", chatId, text, replyTo: extra?.reply_parameters?.message_id, threadId: extra?.message_thread_id });
       return { message_id: sent.length };
     },
     sendDocument: async (chatId: number, file: { filename?: string }) => {
