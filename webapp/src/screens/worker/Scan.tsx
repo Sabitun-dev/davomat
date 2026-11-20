@@ -45,7 +45,7 @@ const failurePicture: Record<string, PictureName> = {
   too_early: "wait",
 };
 
-export default function Scan({ eventType }: { eventType: EventType }) {
+export default function Scan({ eventType, workOver }: { eventType: EventType; workOver?: boolean }) {
   const t = useT();
   const nav = useNav();
   const [phase, setPhase] = useState<Phase>({ kind: "scanning" });
@@ -90,6 +90,7 @@ export default function Scan({ eventType }: { eventType: EventType }) {
           lng: loc.ok ? loc.lng : null,
           accuracy: loc.ok ? loc.accuracy : null,
           deviceId: device,
+          ...(eventType === "CHECK_OUT" && workOver ? { workOver: true } : {}),
         },
       };
       pending.current.body.idempotencyKey = pending.current.key;
@@ -224,6 +225,20 @@ function Success({ result, onDone }: { result: AttemptResult; onDone: () => void
             )}
           </dl>
         </Card>
+        {result.workOver && (
+          <Card className="w-full text-left">
+            {result.workOver.counted ? (
+              <>
+                <p className="tabular text-[16px] font-semibold">{t("s.work_over_status", { ticked: result.workOver.ticked, needed: result.workOver.needed })}</p>
+                <p className={`mt-1 text-[15px] ${result.workOver.forgiven ? "text-ok" : "text-hint"}`}>
+                  {result.workOver.forgiven ? t("s.work_over_done") : t("s.work_over_wait")}
+                </p>
+              </>
+            ) : (
+              <p className="text-[15px] text-late">{t("s.work_over_not_counted")}</p>
+            )}
+          </Card>
+        )}
         {result.branchName && <p className="text-[14px] text-hint">{result.branchName}</p>}
       </div>
       <BottomActions text={t("c.done")} onClick={onDone} />

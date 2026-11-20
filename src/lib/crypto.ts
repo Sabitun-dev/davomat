@@ -25,6 +25,15 @@ export function randomToken(bytes = 16): string {
   return randomBytes(bytes).toString("base64url");
 }
 
+/** Short code people can read out and type: capitals and digits without look-alikes (0/O, 1/I/L). */
+export function randomCode(length = 6): string {
+  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const bytes = randomBytes(length);
+  let out = "";
+  for (let i = 0; i < length; i++) out += alphabet[bytes[i] % alphabet.length];
+  return out;
+}
+
 /** Random token made only of letters and digits (safe inside a Telegram startapp parameter). */
 export function randomAlnum(length = 20): string {
   const alphabet = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";

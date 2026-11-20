@@ -11,7 +11,7 @@ import { useNav } from "../../nav.tsx";
 import { useSession } from "../../session.tsx";
 import { BottomActions, BottomSpacer } from "../../telegram/buttons.tsx";
 import { confirm } from "../../telegram/tg.ts";
-import { Card, ErrorState, IconButton, ListCard, ListRow, Page, Ring, Sheet, SkeletonScreen, StatTile, StatusChip, lookOf } from "../../ui/index.ts";
+import { Button, Card, ErrorState, IconButton, ListCard, ListRow, Page, Ring, Sheet, SkeletonScreen, StatTile, StatusChip, Toggle, lookOf } from "../../ui/index.ts";
 import type { Today } from "../../types.ts";
 
 const stateStyle = {
@@ -41,6 +41,8 @@ export default function WorkerHome() {
   const [branchId, setBranchId] = useState<number | null>(null);
   const today = useApi<Today & { branches: { id: number; name: string }[] }>(`/worker/today${branchId ? `?branchId=${branchId}` : ""}`);
   const [picking, setPicking] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [workOver, setWorkOver] = useState(false);
   const nowMin = useNowMinute(today.data?.branch?.timezone);
   const onBreak = today.data?.state === "ON_BREAK";
   useEffect(() => {
@@ -59,7 +61,9 @@ export default function WorkerHome() {
   const breakStart = [...d.events].reverse().find((e) => e.type === "BREAK_START");
   const money = (n: number) => formatMoney(n, d.currency, lang);
 
+  const canTick = d.schedule !== null && d.workOverFromMin !== null && nowMin >= d.workOverFromMin && nowMin < d.schedule.endMin;
   const go = async (type: EventType) => {
+    if (type === "CHECK_OUT" && canTick) return setCheckingOut(true);
     if (type === "CHECK_OUT" && !(await confirm(t("w.confirm_checkout")))) return;
     nav.push("scan", { eventType: type });
   };
@@ -202,6 +206,27 @@ export default function WorkerHome() {
           secondary={second ? { text: t(`ev.${second}`), onClick: () => void go(second) } : undefined}
         />
       )}
+
+      <Sheet open={checkingOut} onClose={() => setCheckingOut(false)} title={t("w.confirm_checkout")}>
+        <ListCard>
+          <Toggle
+            checked={workOver}
+            onChange={setWorkOver}
+            label={t("w.work_over")}
+            hint={t("w.work_over_hint", { p: d.workOverPercent, end: d.schedule ? minuteToHHMM(d.schedule.endMin) : "" })}
+          />
+        </ListCard>
+        <div className="mt-4">
+          <Button
+            onClick={() => {
+              setCheckingOut(false);
+              nav.push("scan", { eventType: "CHECK_OUT", workOver });
+            }}
+          >
+            {t("ev.CHECK_OUT")}
+          </Button>
+        </div>
+      </Sheet>
 
       <Sheet open={picking} onClose={() => setPicking(false)} title={t("w.choose_branch")}>
         <ListCard>

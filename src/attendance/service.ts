@@ -14,6 +14,7 @@ import { replyUnderVideo } from "../jobs/notify.ts";
 import { suspiciousFlags } from "./flags.ts";
 import { checkGeofence } from "./geo.ts";
 import { checkTokenFreshness, parseToken } from "./qr.ts";
+import { tickAllowed, tickedUsers, workOverStatus, type WorkOverStatus } from "./workOver.ts";
 import type { AttendanceEvent, Branch, User } from "../generated/prisma/client.ts";
 
 export interface AttemptInput {
@@ -24,6 +25,8 @@ export interface AttemptInput {
   accuracy: unknown;
   idempotencyKey: unknown;
   deviceId: unknown;
+  /** Check-out only: the "Ish tugadi" tick. */
+  workOver?: unknown;
 }
 
 export interface AttemptResult {
@@ -37,6 +40,8 @@ export interface AttemptResult {
   radiusM?: number;
   lateMin?: number;
   branchName?: string;
+  /** After a check-out with the tick: how many ticked and how many are needed. */
+  workOver?: WorkOverStatus & { counted: boolean };
 }
 
 type Reject = { reason: string; params?: Record<string, string | number>; branch?: Branch | null; distanceM?: number | null };
@@ -194,6 +199,13 @@ export async function recordAttempt(
         reject({ reason: "wrong_branch", branch, params: { branch: original?.name ?? "" } });
       }
 
+      // The tick counts only before the end and inside the last part of the day.
+      let workOver = false;
+      if (eventType === "CHECK_OUT" && input.workOver === true) {
+        const day = await resolveDay(tx, branch.id, user.id, local.date);
+        workOver = tickAllowed(settings, day.schedule?.endMin ?? null, local.minute);
+      }
+
       if (eventType === "CHECK_IN") {
         const resolved = await resolveDay(tx, branch.id, user.id, local.date);
         if (resolved.schedule) {
@@ -252,11 +264,19 @@ export async function recordAttempt(
         });
       }
       const event = await tx.attendanceEvent.create({
-        data: { ...base, branchId: branch.id, localDate: local.date, distanceM: fence.distanceM, status: "ACCEPTED", flags },
+        data: { ...base, branchId: branch.id, localDate: local.date, distanceM: fence.distanceM, status: "ACCEPTED", flags, workOver },
       });
       await linkVideoToEvent(tx, event, settings);
       const result = await recalcDay(tx, user.id, local.date, now);
-      return { result: resultOf(event, branch, eventType === "CHECK_IN" ? (result?.lateMin ?? 0) : undefined), eventId: event.id };
+      const res = resultOf(event, branch, eventType === "CHECK_IN" ? (result?.lateMin ?? 0) : undefined);
+      if (eventType === "CHECK_OUT" && input.workOver === true) {
+        // One more tick may have reached the threshold: the others who ticked are recalculated too.
+        for (const other of await tickedUsers(tx, branch.id, local.date)) {
+          if (other !== user.id) await recalcDay(tx, other, local.date, now);
+        }
+        res.workOver = { ...(await workOverStatus(tx, branch.id, local.date, settings)), counted: workOver };
+      }
+      return { result: res, eventId: event.id };
     });
     // Optional reply under the group video (only when that setting is on).
     await replyUnderVideo(accepted.eventId);

@@ -33,6 +33,8 @@ export interface DayInput {
    * Missing = off (the original spec rule: early arrival and late leaving add nothing).
    */
   overtime?: { enabled: boolean; includeEarly: boolean };
+  /** "Ish tugadi": enough workers ticked it, so leaving before the end is not deducted. */
+  earlyLeaveForgiven?: boolean;
 }
 
 export interface DayOutput {
@@ -165,7 +167,7 @@ export function computeDay(input: DayInput): DayOutput {
   const openBreakEnd = realOut ?? (inProgress ? Math.min(nowMinute!, end) : end);
 
   const late = lateMinutes(checkIn, start, input.graceMin, input.graceMode);
-  const early = realOut === null || closedBySystem ? 0 : Math.max(0, end - realOut);
+  const early = realOut === null || closedBySystem || input.earlyLeaveForgiven ? 0 : Math.max(0, end - realOut);
   const breakMin = clippedTotal(breakSpans(events, openBreakEnd), start, end);
   const overage = Math.max(0, breakMin - input.breakAllowanceMin);
   const inside = Math.min(scheduled, Math.max(0, scheduled - late - early - overage));

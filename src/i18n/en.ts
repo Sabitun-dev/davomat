@@ -2,6 +2,7 @@ import type { MessageKey } from "./uz.ts";
 
 export const en: Record<MessageKey, string> = {
   "bot.start": "Hello, {name}! 👋\n\nThis is Davomat, for marking when you arrive and leave.\nTap the «Ochish» button below.",
+  "bot.start_invite": "Hello, {name}! 👋\n\nYou've been invited to join. Tap «Ochish» below to join.",
   "bot.help":
     "How to use it:\n1. Send a round video to the group (as usual).\n2. Tap «Ochish».\n3. Tap the big button and scan the branch QR code.\n\nIf you have questions, ask your manager.",
   "bot.open": "Open",

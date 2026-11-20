@@ -33,6 +33,12 @@ export interface CompanySettings {
   overtimeEnabled: boolean;
   /** With overtime on: also count arriving before the scheduled start. */
   overtimeIncludeEarly: boolean;
+  /** "Ish tugadi" tick: if enough workers tick it, early leaving is not deducted. */
+  collectiveFinishEnabled: boolean;
+  /** Share of the workers present that day who must tick it (percent). */
+  collectiveFinishPercent: number;
+  /** The tick counts only this many minutes before the scheduled end. */
+  collectiveFinishWindowMin: number;
 }
 
 export const DEFAULT_SETTINGS: CompanySettings = {
@@ -54,6 +60,9 @@ export const DEFAULT_SETTINGS: CompanySettings = {
   monthlyPayrollMessage: true,
   overtimeEnabled: true,
   overtimeIncludeEarly: true,
+  collectiveFinishEnabled: true,
+  collectiveFinishPercent: 50,
+  collectiveFinishWindowMin: 120,
 };
 
 const LIMITS: Partial<Record<keyof CompanySettings, [number, number]>> = {
@@ -66,6 +75,8 @@ const LIMITS: Partial<Record<keyof CompanySettings, [number, number]>> = {
   inviteExpiryDays: [1, 90],
   gpsRetentionMonths: [1, 60],
   rateLimitPer5Min: [3, 100],
+  collectiveFinishPercent: [1, 100],
+  collectiveFinishWindowMin: [15, 480],
   remindCheckInAfterMin: [0, 240],
   remindCheckOutAfterMin: [0, 240],
 };

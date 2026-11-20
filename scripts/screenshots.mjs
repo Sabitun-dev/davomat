@@ -35,6 +35,7 @@ const shots = [
   ["02-phone", "s=phone"],
   ["03-name", "s=name"],
   ["04-intro", "s=intro"],
+  ["05-join-code", "s=nobranch"],
   ["10-worker-home", "s=worker"],
   ["11-worker-working", "s=worker-working"],
   ["12-worker-break", "s=worker-break"],

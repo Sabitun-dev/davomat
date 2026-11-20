@@ -139,6 +139,10 @@ export async function workerToday(userId: number, preferredBranchId?: number) {
     branches: members.map((m) => ({ id: m.branchId, name: m.branch.name })),
     schedule: resolved.schedule,
     earliestCheckInMin: resolved.schedule ? Math.max(0, resolved.schedule.startMin - settings.earliestCheckInMin) : null,
+    // From this minute a check-out can carry the "Ish tugadi" tick (null = not today).
+    workOverFromMin:
+      settings.collectiveFinishEnabled && resolved.schedule ? Math.max(0, resolved.schedule.endMin - settings.collectiveFinishWindowMin) : null,
+    workOverPercent: settings.collectiveFinishPercent,
     state,
     actions: nextActions(state),
     events: events.map((e) => eventJson(e, branch.timezone)),

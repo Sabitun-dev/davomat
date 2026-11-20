@@ -4,6 +4,7 @@
 export const uz = {
   "bot.start":
     "Assalomu alaykum, {name}! 👋\n\nBu Davomat — ishga kelish-ketishni belgilash uchun.\nPastdagi «Ochish» tugmasini bosing.",
+  "bot.start_invite": "Assalomu alaykum, {name}! 👋\n\nSizni ishga taklif qilishdi. Pastdagi «Ochish» tugmasini bosing va qo'shiling.",
   "bot.help":
     "Qanday ishlatiladi:\n1. Guruhga dumaloq video yuboring (odatdagidek).\n2. «Ochish» tugmasini bosing.\n3. Katta tugmani bosing va filial QR kodini skaner qiling.\n\nSavol bo'lsa, rahbaringizga yozing.",
   "bot.open": "Ochish",

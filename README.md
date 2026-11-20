@@ -104,7 +104,18 @@ the bot commands and the **"Ochish"** menu button. Every line should be ✅. Ope
    put it up at the entrance.
 4. On the **Jadval** button set working hours; on **Summalar** set daily amounts (or set a default amount
    per worker).
-5. On the **Taklif** tab create an invite link and share it with the workers.
+5. On the **Taklif** tab tap **Havola yaratish**. Every invite has a short **code** (e.g. `K7M2QX`) and a
+   **link**. Give workers either one:
+   - **Code:** the worker opens the bot, taps **Ochish**, goes through consent → phone → name, and the
+     next screen asks for the **Taklif kodi**. They type the code and join your branch. Tap the code in
+     the list to copy it.
+   - **Link:** `https://t.me/<bot>?start=inv_…`. It opens the bot, which answers with an **Ochish** button
+     that opens the app with the invite already filled in. This always works.
+
+   *Why the old link opened the bot chat:* a direct Mini App link (`t.me/<bot>/app?startapp=…`) only opens
+   the app if a Mini App with exactly that short name is registered in BotFather (`/newapp`, short name =
+   `MINIAPP_SHORT_NAME`). If it is not, Telegram falls back to the bot chat. The shared link now goes
+   through the bot, and the code needs no link at all.
 
 ---
 
@@ -113,8 +124,9 @@ the bot commands and the **"Ochish"** menu button. Every line should be ✅. Ope
 Phone A = you (owner). Phone B = a worker. Stand inside the branch with the printed poster.
 
 - [ ] A: create a branch, get the QR **PNG** and the **A4 poster** in the bot chat.
-- [ ] A: create a single-use invite and send it to B.
-- [ ] B: open the link → consent → share phone → name → **Qo'shilish**. A sees B in *Xodimlar*.
+- [ ] A: create an invite and tell B the **code**.
+- [ ] B: open the bot → **Ochish** → consent → share phone → name → type the code → **Qo'shilish**.
+      A sees B in *Xodimlar*. (Also try the **link** with a second worker: bot → Ochish → Qo'shilish.)
 - [ ] B: send a round video to the group, then **Keldim** → scan the poster → success screen with time,
       distance (e.g. "12 m") and "on time" or "7 min late".
 - [ ] B: **Tanaffus** → scan → **Tanaffusdan qaytdim** → scan → **Ketdim** → confirm → scan.
@@ -127,6 +139,8 @@ Phone A = you (owner). Phone B = a worker. Stand inside the branch with the prin
 - [ ] A: set B's daily amount to 100 USD (or so'm), hours 09:00–19:00. Correct B's check-in to 09:30 and
       check-out to 18:30 (comment required) → day shows **90.00** (spec example A). Export
       **Hisobot → XLSX** → the file in the bot chat shows 90 too.
+- [ ] "Ish tugadi": with 2 workers checked in (09:00–19:00), both check out after 17:00 and tick
+      **Ish tugadi** → both days show the full amount and the flag *Ish erta tugadi (jamoa)*.
 - [ ] A: **Hisobot → Oyni yopish**, then try to change something → "Bu oy yopilgan". Only the owner can
       unlock (with a comment).
 - [ ] Next morning: absences, auto-closed days and "video without scan" appear in **Tekshirish kerak**.
@@ -161,6 +175,19 @@ A day closed automatically (no check-out) never earns overtime. No check-in on a
 No check-out = the day closes itself at the scheduled end 2 hours later and is marked *needs review*.
 Final salary = sum of earned + bonuses − fines. Spec examples A–I are automatic tests (with overtime
 off, as the spec defines them), plus tests for the overtime rule above.
+
+### When work ends early ("Ish tugadi")
+Sometimes there is nothing left to do at 17:30 and everyone goes home before 19:00. When checking out in
+the last 2 hours before the end, the worker sees a switch **"Ish tugadi — qiladigan ish qolmadi"**.
+
+- If at least **50%** of the workers who came to that branch that day tick it, everyone who ticked is paid
+  **as if they left at 19:00**: no early-leaving deduction. The day shows *Ish erta tugadi (jamoa)*.
+- The count is live: when the second person ticks and the 50% is reached, the first one's day is fixed too.
+  After checking out the worker sees e.g. "1 / 2 kishi belgiladi".
+- Leaving early **without** the tick is deducted as usual.
+- The tick counts only in the last 120 minutes before the end, so two people cannot tick at noon.
+- Settings (**Kompaniya sozlamalari → Ish erta tugasa**): on/off, the share needed (50%), the window (120 min).
+  You can still correct any day by hand.
 
 The daily amount for a day is the number in the **Summalar** grid, or, if that cell is empty, the
 worker's default amount. A day off with a check-in is an "extra day", paid only if you put an amount in
@@ -202,7 +229,7 @@ attempts per 5 minutes (10). Per branch: radius, grace and grace mode, break all
 
 ```
 npm install          # also prepares the database client
-npm test             # 121 tests; they use an in-memory Postgres (PGlite), no setup needed
+npm test             # 127 tests; they use an in-memory Postgres (PGlite), no setup needed
 npm run typecheck
 npm run build        # builds the Mini App into public/app/
 npm run screenshots  # design review: every screen, light/dark, 360/414 px -> screenshots/

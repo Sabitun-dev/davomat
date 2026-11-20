@@ -291,12 +291,12 @@ function InvitesTab({ branch }: { branch: Detail }) {
   const toast = useToast();
   const { me } = useSession();
   const invites = useApi<Invite[]>(`/admin/branches/${branch.id}/invites`);
-  const [single, setSingle] = useState(true);
+  const [single, setSingle] = useState(false);
   const [days, setDays] = useState(7);
   const [role, setRole] = useState<"WORKER" | "ADMIN">("WORKER");
   const [busy, setBusy] = useState(false);
 
-  const share = (inv: Invite) => shareLink(inv.link, t("inv.share_text", { branch: branch.name }));
+  const share = (inv: Invite) => shareLink(inv.link, t("inv.share_text", { branch: branch.name, code: inv.code ?? "" }));
 
   const create = async () => {
     setBusy(true);
@@ -347,6 +347,7 @@ function InvitesTab({ branch }: { branch: Detail }) {
         </Button>
       </Card>
       <SectionTitle>{t("inv.title")}</SectionTitle>
+      {invites.data && invites.data.length > 0 && <p className="mb-2 px-1 text-[14px] text-hint">{t("inv.code_hint")}</p>}
       {invites.data && invites.data.length === 0 && <p className="px-1 text-hint">{t("inv.none")}</p>}
       {invites.data && invites.data.length > 0 && (
         <ListCard>
@@ -354,8 +355,24 @@ function InvitesTab({ branch }: { branch: Detail }) {
             <ListRow
               key={inv.id}
               icon={inv.role === "ADMIN" ? <UserPlus size={20} /> : <Link size={20} />}
-              title={inv.maxUses ? t("inv.uses", { uses: inv.uses, max: inv.maxUses }) : t("inv.uses_multi", { uses: inv.uses })}
-              subtitle={`${inv.role === "ADMIN" ? t("inv.role_admin") + " · " : ""}${t("inv.until", { date: dayLabel(inv.expiresAt.slice(0, 10), lang) })}`}
+              title={
+                inv.code ? (
+                  <button
+                    type="button"
+                    aria-label={t("c.copy")}
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(inv.code!);
+                      toast(t("c.copied"));
+                    }}
+                    className="tabular text-[22px] font-bold tracking-[0.2em] text-ink"
+                  >
+                    {inv.code}
+                  </button>
+                ) : (
+                  t("inv.title")
+                )
+              }
+              subtitle={`${inv.role === "ADMIN" ? t("inv.role_admin") + " · " : ""}${inv.maxUses ? t("inv.uses", { uses: inv.uses, max: inv.maxUses }) : t("inv.uses_multi", { uses: inv.uses })} · ${t("inv.until", { date: dayLabel(inv.expiresAt.slice(0, 10), lang) })}`}
               right={
                 <span className="flex">
                   <button type="button" aria-label={t("c.share")} onClick={() => share(inv)} className="flex h-11 w-11 items-center justify-center text-accent">

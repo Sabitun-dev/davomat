@@ -27,6 +27,11 @@ export async function miniAppLink(startParam?: string): Promise<string> {
   return startParam ? `${base}?startapp=${encodeURIComponent(startParam)}` : base;
 }
 
+/** https://t.me/<bot>?start=<param> — always opens the bot, which answers with an "Ochish" button. */
+export async function botStartLink(param: string): Promise<string> {
+  return `https://t.me/${await botUsername()}?start=${encodeURIComponent(param)}`;
+}
+
 export function webAppUrl(path = ""): string {
   return `${env.appUrl}/app/${path.replace(/^\//, "")}`;
 }

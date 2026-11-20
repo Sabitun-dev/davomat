@@ -30,10 +30,10 @@ function me() {
       phone: scenario === "phone",
       name: scenario === "name",
     },
-    role: admin ? "OWNER" : "WORKER",
+    role: admin ? "OWNER" : scenario === "nobranch" ? "NONE" : "WORKER",
     isStaff: admin,
     company: { id: 1, name: "Sobitxon Savdo", currency: "UZS" },
-    branches: [{ id: 1, name: "Chilonzor", timezone: "Asia/Tashkent" }],
+    branches: scenario === "nobranch" ? [] : [{ id: 1, name: "Chilonzor", timezone: "Asia/Tashkent" }],
     adminBranchIds: [],
     startParam: null,
     botUsername: "davomat_bot",
@@ -212,7 +212,7 @@ export function registerScenarios() {
     })),
   );
   route(/^GET \/admin\/branches\/1\/invites/, () => [
-    { id: 1, role: "WORKER", expiresAt: "2026-03-25T00:00:00Z", maxUses: null, uses: 3, link: "https://t.me/davomat_bot/app?startapp=inv_abc" },
+    { id: 1, role: "WORKER", expiresAt: "2026-12-25T00:00:00Z", maxUses: null, uses: 3, code: "K7M2QX", link: "https://t.me/davomat_bot?start=inv_abc", appLink: "https://t.me/davomat_bot/app?startapp=inv_abc" },
   ]);
   route(/^GET \/admin\/dashboard/, () => ({
     working: [

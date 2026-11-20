@@ -69,6 +69,9 @@ export interface Today {
   branch: { id: number; name: string; timezone: string } | null;
   schedule: { startMin: number; endMin: number } | null;
   earliestCheckInMin: number | null;
+  /** From this local minute a check-out may carry the "Ish tugadi" tick (null = not today). */
+  workOverFromMin: number | null;
+  workOverPercent: number;
   state: DayState;
   actions: EventType[];
   events: EventItem[];
@@ -120,7 +123,12 @@ export interface Invite {
   expiresAt: string;
   maxUses: number | null;
   uses: number;
+  /** Short code the worker types in the app. */
+  code: string | null;
+  /** t.me/<bot>?start=inv_… (always works). */
   link: string;
+  /** t.me/<bot>/<app>?startapp=inv_… (needs the Mini App registered in BotFather). */
+  appLink: string;
 }
 
 export interface Device {
@@ -149,4 +157,5 @@ export interface AttemptResult {
   radiusM?: number;
   lateMin?: number;
   branchName?: string;
+  workOver?: { present: number; ticked: number; needed: number; forgiven: boolean; counted: boolean };
 }

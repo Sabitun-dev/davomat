@@ -210,7 +210,54 @@ export function IntroScreen({ role }: { role: "worker" | "admin" }) {
   );
 }
 
+/** A new worker without a branch types the invite code the boss gave them. */
 export function NoBranchScreen() {
   const t = useT();
-  return <Centered picture="team" title={t("ob.no_branch_title")} text={t("ob.no_branch_text")} />;
+  const toast = useToast();
+  const { refresh } = useSession();
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const clean = code.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const join = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api<{ branchName: string }>("/invites/code", { body: { code: clean } });
+      haptic.success();
+      toast(t("ob.invite_joined", { branch: r.branchName }));
+      await refresh();
+    } catch (e) {
+      haptic.error();
+      setError(errorText(t, e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <div className="mx-auto flex max-w-[480px] flex-col gap-5 px-6 pt-12 safe-top animate-fade-up">
+        <Picture name="team" size={120} />
+        <div className="text-center">
+          <h1 className="text-[28px] font-bold">{t("ob.code_title")}</h1>
+          <p className="mt-2 text-[17px] text-hint">{t("ob.code_text")}</p>
+        </div>
+        <Field error={error}>
+          <Input
+            value={code}
+            autoCapitalize="characters"
+            autoComplete="off"
+            spellCheck={false}
+            maxLength={12}
+            placeholder={t("ob.code_placeholder")}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === "Enter" && clean.length >= 4 && join()}
+            className="tabular text-center text-[24px] font-bold tracking-[0.3em] placeholder:text-[17px] placeholder:font-normal placeholder:tracking-normal"
+          />
+        </Field>
+      </div>
+      <BottomActions text={t("ob.invite_join")} loading={busy} disabled={clean.length < 4} onClick={join} />
+      <BottomSpacer />
+    </>
+  );
 }

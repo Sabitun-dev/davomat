@@ -7,12 +7,13 @@ import { parseSettings, type CompanySettings } from "../lib/settings.ts";
 import { localMinute, localToUtc, monthOf, toLocal } from "../shared/time.ts";
 import { loadScheduleRows, pickDay, type ScheduleRows } from "../schedule/resolve.ts";
 import { computeDay } from "./engine.ts";
+import { workOverStatus } from "../attendance/workOver.ts";
 import type { Branch, DailyResult } from "../generated/prisma/client.ts";
 
 type DbLike = Tx | ReturnType<typeof db>;
 
 /** Flags that do not need a day review (they are payroll warnings). */
-const NON_REVIEW_FLAGS = new Set(["missing_amount"]);
+const NON_REVIEW_FLAGS = new Set(["missing_amount", "work_over"]);
 
 export async function isMonthLocked(tx: DbLike, companyId: number, month: string): Promise<boolean> {
   return Boolean(await tx.monthLock.findUnique({ where: { companyId_month: { companyId, month } } }));
@@ -147,6 +148,11 @@ export async function recalcUserDays(
     // A filled-in cell wins; otherwise the worker's default amount counts for working days.
     const amount = amountRow?.amount ?? (resolved.schedule ? (member?.defaultDailyAmount ?? null) : null);
 
+    // "Ish tugadi": did this worker tick it, and did enough of the branch tick it too?
+    const lastCheckOut = [...dayEvents].reverse().find((e) => e.type === "CHECK_OUT");
+    const forgiven =
+      lastCheckOut?.workOver === true && (await workOverStatus(tx, branch.id, date, settings)).forgiven;
+
     const res = computeDay({
       schedule: resolved.schedule,
       graceMin: branch.graceMin,
@@ -157,10 +163,12 @@ export async function recalcUserDays(
       nowMinute: date === local.date ? local.minute : null,
       autoCloseAfterMin: settings.autoCloseAfterMin,
       overtime: { enabled: settings.overtimeEnabled, includeEarly: settings.overtimeIncludeEarly },
+      earlyLeaveForgiven: forgiven,
     });
 
     // Flags from anti-cheat checks, corrections and the group-video link.
     const flags = new Set(res.flags);
+    if (forgiven) flags.add("work_over");
     for (const e of dayEvents) for (const f of e.flags) flags.add(f);
     if (dayEvents.some((e) => e.source === "ADMIN")) flags.add("corrected");
     if (settings.flagMissingVideo) {

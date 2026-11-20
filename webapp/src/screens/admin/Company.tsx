@@ -34,6 +34,10 @@ const BOT: [string, Key, number, number, number][] = [
   ["remindCheckInAfterMin", "co.remind_in", 5, 0, 240],
   ["remindCheckOutAfterMin", "co.remind_out", 5, 0, 240],
 ];
+const FINISH: [string, Key, number, number, number][] = [
+  ["collectiveFinishPercent", "co.finish_percent", 5, 1, 100],
+  ["collectiveFinishWindowMin", "co.finish_window", 15, 15, 480],
+];
 const OTHER: [string, Key, number, number, number][] = [
   ["inviteExpiryDays", "co.invite_days", 1, 1, 90],
   ["gpsRetentionMonths", "co.gps_months", 1, 1, 60],
@@ -103,6 +107,11 @@ export default function CompanyScreen() {
         <Toggle label={t("co.overtime")} hint={t("co.overtime_hint")} checked={Boolean(form.settings.overtimeEnabled)} onChange={(v) => set("overtimeEnabled", v)} />
         {Boolean(form.settings.overtimeEnabled) && toggle("overtimeIncludeEarly", "co.overtime_early")}
       </ListCard>
+      <SectionTitle>{t("co.section_finish")}</SectionTitle>
+      <ListCard>
+        <Toggle label={t("co.finish")} hint={t("co.finish_hint")} checked={Boolean(form.settings.collectiveFinishEnabled)} onChange={(v) => set("collectiveFinishEnabled", v)} />
+      </ListCard>
+      {Boolean(form.settings.collectiveFinishEnabled) && <div className="mt-3">{numbers(FINISH)}</div>}
       <SectionTitle>{t("co.section_checkin")}</SectionTitle>
       {numbers(NUMBERS)}
       <SectionTitle>{t("co.section_video")}</SectionTitle>

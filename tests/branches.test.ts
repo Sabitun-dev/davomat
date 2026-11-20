@@ -68,7 +68,9 @@ describe("invites", () => {
     const b = await createBranch(owner, { name: "Invite branch", ...OFFICE });
     const inv = await createInvite(owner, b.id, { singleUse: true, days: 7 });
     const token = inv.link.split("inv_")[1];
-    expect(inv.link).toContain("https://t.me/davomat_test_bot/");
+    expect(inv.link).toMatch(/^https:\/\/t\.me\/davomat_test_bot\?start=inv_[A-Za-z0-9]+$/);
+    expect(inv.appLink).toContain("https://t.me/davomat_test_bot/app?startapp=inv_");
+    expect(inv.code).toMatch(/^[A-HJ-NP-Z2-9]{6}$/);
 
     const u1 = await makeUser("First");
     expect((await previewInvite(token, u1.id)).valid).toBe(true);

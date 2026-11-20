@@ -203,6 +203,8 @@ model BranchMember {
 model Invite {
   id          Int       @id @default(autoincrement())
   token       String    @unique
+  /// Short code a worker types in the app (e.g. K7M2QX). Same invite as the link.
+  code        String?   @unique
   branchId    Int       @map("branch_id")
   /// WORKER or ADMIN. Only the owner can make admin invites.
   role        Role      @default(WORKER)
@@ -307,6 +309,8 @@ model AttendanceEvent {
   source         EventSource @default(APP)
   /// Removed by an admin correction (kept for history).
   voided         Boolean     @default(false)
+  /// Check-out with the "Ish tugadi" tick (work is over for everyone today).
+  workOver       Boolean     @default(false) @map("work_over")
   flags          String[]    @default([])
   createdAt      DateTime    @default(now()) @map("created_at")
 

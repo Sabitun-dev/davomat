@@ -34,8 +34,10 @@ export function createBot(botInfo?: UserFromGetMe): Bot {
   bot.command("start", async (ctx) => {
     if (ctx.chat.type !== "private") return;
     const lang = await languageOf(ctx);
-    await ctx.reply(t(lang, "bot.start", { name: ctx.from?.first_name ?? "" }), {
-      reply_markup: openAppKeyboard(t(lang, "bot.open"), webAppUrl()),
+    // An invite link (t.me/<bot>?start=inv_...) opens here: the button carries the invite into the app.
+    const payload = typeof ctx.match === "string" && /^inv_[A-Za-z0-9]{10,40}$/.test(ctx.match) ? ctx.match : null;
+    await ctx.reply(t(lang, payload ? "bot.start_invite" : "bot.start", { name: ctx.from?.first_name ?? "" }), {
+      reply_markup: openAppKeyboard(t(lang, "bot.open"), webAppUrl(payload ? `?startapp=${payload}` : "")),
     });
   });
 

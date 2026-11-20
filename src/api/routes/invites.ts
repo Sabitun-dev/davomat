@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { acceptInvite, previewInvite } from "../../invites/service.ts";
+import { acceptInvite, acceptInviteCode, previewInvite } from "../../invites/service.ts";
 import { badRequest } from "../../lib/errors.ts";
 import { body, type AppEnv } from "../context.ts";
 
@@ -11,6 +11,11 @@ function token(value: unknown): string {
 }
 
 inviteRoutes.get("/preview", async (c) => c.json(await previewInvite(token(c.req.query("token")), c.get("user").id)));
+
+inviteRoutes.post("/code", async (c) => {
+  const b = await body<{ code?: string }>(c);
+  return c.json(await acceptInviteCode(b.code, c.get("user").id));
+});
 
 inviteRoutes.post("/accept", async (c) => {
   const b = await body<{ token?: string }>(c);

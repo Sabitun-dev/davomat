@@ -1,10 +1,13 @@
-// Invite links (spec 5.2): https://t.me/<bot>/<app>?startapp=inv_<token>
+// Invites (spec 5.2). Each invite can be used two ways:
+//  - a link: https://t.me/<bot>?start=inv_<token> (the bot answers with an "Ochish" button that opens
+//    the Mini App with the invite), or the direct Mini App link t.me/<bot>/<app>?startapp=inv_<token>;
+//  - a short code (e.g. K7M2QX) the worker types in the app after entering their name.
 
 import { audit } from "../audit/audit.ts";
 import { canManageAdmins, ensure, type Actor } from "../auth/permissions.ts";
 import { getBranchFor } from "../branches/service.ts";
-import { miniAppLink } from "../lib/appConfig.ts";
-import { randomAlnum } from "../lib/crypto.ts";
+import { botStartLink, miniAppLink } from "../lib/appConfig.ts";
+import { randomAlnum, randomCode } from "../lib/crypto.ts";
 import { db, transaction } from "../lib/db.ts";
 import { AppError, badRequest, notFound } from "../lib/errors.ts";
 import { parseSettings } from "../lib/settings.ts";
@@ -20,8 +23,42 @@ export async function inviteJson(i: Invite) {
     uses: i.uses,
     revoked: Boolean(i.revokedAt),
     expired: i.expiresAt.getTime() < Date.now(),
-    link: await miniAppLink(`inv_${i.token}`),
+    code: i.code,
+    link: await botStartLink(`inv_${i.token}`),
+    appLink: await miniAppLink(`inv_${i.token}`),
   };
+}
+
+/** A code no other invite uses. */
+async function freeCode(): Promise<string> {
+  for (let i = 0; i < 10; i++) {
+    const code = randomCode(6);
+    if (!(await db().invite.findUnique({ where: { code }, select: { id: true } }))) return code;
+  }
+  return randomCode(8);
+}
+
+export function normalizeCode(raw: unknown): string {
+  return typeof raw === "string" ? raw.toUpperCase().replace(/[^A-Z0-9]/g, "") : "";
+}
+
+/** Max wrong codes per person in 10 minutes, so codes cannot be guessed. */
+export const CODE_ATTEMPTS = 10;
+
+/** Joins by the short code. Wrong codes are counted; too many in 10 minutes are refused. */
+export async function acceptInviteCode(rawCode: unknown, userId: number) {
+  const company = await ensureCompany();
+  const fails = await db().auditLog.count({
+    where: { actorUserId: userId, action: "invite.code_fail", at: { gt: new Date(Date.now() - 10 * 60_000) } },
+  });
+  if (fails >= CODE_ATTEMPTS) throw new AppError("rate_limited", 429);
+  const code = normalizeCode(rawCode);
+  const invite = code.length >= 4 ? await db().invite.findUnique({ where: { code } }) : null;
+  if (!invite) {
+    await audit(db(), { companyId: company.id, actorUserId: userId, action: "invite.code_fail", entity: "invite", entityId: code.slice(0, 12) || "-" });
+    throw new AppError("invite_code_wrong", 400);
+  }
+  return acceptInvite(invite.token, userId);
 }
 
 export async function createInvite(
@@ -36,10 +73,13 @@ export async function createInvite(
   if (typeof days !== "number" || !Number.isInteger(days) || days < 1 || days > 90) throw badRequest();
   const role = raw.role === "ADMIN" ? "ADMIN" : "WORKER";
   if (role === "ADMIN") ensure(canManageAdmins(actor));
+  // Picked before the transaction: it reads the database on its own connection.
+  const code = await freeCode();
   const invite = await transaction(async (tx) => {
     const created = await tx.invite.create({
       data: {
         token: randomAlnum(22),
+        code,
         branchId,
         role,
         expiresAt: new Date(Date.now() + days * 86400_000),
@@ -67,6 +107,8 @@ export async function listInvites(actor: Actor, branchId: number) {
     orderBy: { createdAt: "desc" },
   });
   const usable = rows.filter((i) => i.maxUses === null || i.uses < i.maxUses);
+  // Invites made before codes existed get one now.
+  for (const i of usable) if (!i.code) i.code = (await db().invite.update({ where: { id: i.id }, data: { code: await freeCode() } })).code;
   return Promise.all(usable.map(inviteJson));
 }
 

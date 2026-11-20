@@ -3,7 +3,7 @@ import { api, ApiError } from "./api.ts";
 import { I18nProvider, toLang, useT } from "./i18n/index.tsx";
 import { NavBackButton, NavProvider, useNav } from "./nav.tsx";
 import { SessionContext } from "./session.tsx";
-import { inTelegram, telegramLanguage } from "./telegram/tg.ts";
+import { inTelegram, startParam, telegramLanguage } from "./telegram/tg.ts";
 import { ErrorState, Picture, SkeletonScreen, ToastProvider } from "./ui/index.ts";
 import { ConsentScreen, IntroScreen, NameScreen, NoBranchScreen, PhoneScreen } from "./screens/onboarding/Onboarding.tsx";
 import { InviteScreen } from "./screens/onboarding/Invite.tsx";
@@ -49,7 +49,8 @@ function Gate({ me }: { me: Me }) {
   if (me.needs.consent) return <ConsentScreen />;
   if (me.needs.phone) return <PhoneScreen />;
   if (me.needs.name) return <NameScreen />;
-  const invite = me.startParam?.startsWith("inv_") ? me.startParam.slice(4) : null;
+  const param = me.startParam ?? startParam();
+  const invite = param?.startsWith("inv_") ? param.slice(4) : null;
   if (invite && !inviteDone) return <InviteScreen token={invite} onDone={() => setInviteDone(true)} />;
   const introRole = me.isStaff ? "admin" : "worker";
   if ((me.isStaff || me.branches.length > 0) && !me.user.introSeen.includes(introRole)) return <IntroScreen role={introRole} />;
