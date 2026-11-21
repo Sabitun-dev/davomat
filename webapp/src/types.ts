@@ -18,7 +18,20 @@ export interface Me {
   needs: { consent: boolean; phone: boolean; name: boolean };
   role: Role;
   isStaff: boolean;
-  company: { id: number; name: string; currency: Currency };
+  /** The current company (null = none yet). Screens inside a company can rely on it. */
+  company: {
+    id: number;
+    name: string;
+    currency: Currency;
+    /** ok, or blocked by the platform owner (suspended) or by the paid-until date (expired). */
+    state: "ok" | "suspended" | "expired";
+    /** Only for owners: the last paid day. */
+    paidUntil: string | null;
+  } | null;
+  /** All companies where this person has an active membership. */
+  companies: { id: number; name: string; role: Role }[];
+  /** A platform owner (OWNER_TELEGRAM_IDS): may add and stop companies. */
+  platform: boolean;
   branches: { id: number; name: string; timezone: string }[];
   adminBranchIds: number[];
   startParam: string | null;
@@ -144,6 +157,25 @@ export interface Person {
   username: string | null;
   role: Role;
   adminBranchIds: number[];
+}
+
+export interface PlatformCompany {
+  id: number;
+  name: string;
+  active: boolean;
+  paidUntil: string | null;
+  maxWorkers: number | null;
+  note: string;
+  currency: "UZS" | "USD";
+  groupTitle: string | null;
+  hasGroup: boolean;
+  state: "ok" | "suspended" | "expired";
+  /** Days until paid-until (negative = already over), null = no end date. */
+  daysLeft: number | null;
+  workers: number;
+  owners: { userId: number; telegramId: string; name: string | null; opened: boolean }[];
+  createdAt: string;
+  stats?: { branches: number; checkIns30: number; lastActivity: string | null };
 }
 
 export interface AttemptResult {

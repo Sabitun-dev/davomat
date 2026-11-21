@@ -11,7 +11,7 @@ import { randomAlnum, randomCode } from "../lib/crypto.ts";
 import { db, transaction } from "../lib/db.ts";
 import { AppError, badRequest, notFound } from "../lib/errors.ts";
 import { parseSettings } from "../lib/settings.ts";
-import { ensureCompany } from "../users/service.ts";
+import { activeWorkerCount, isUsable } from "../companies/access.ts";
 import type { Invite } from "../generated/prisma/client.ts";
 
 export async function inviteJson(i: Invite) {
@@ -47,7 +47,6 @@ export const CODE_ATTEMPTS = 10;
 
 /** Joins by the short code. Wrong codes are counted; too many in 10 minutes are refused. */
 export async function acceptInviteCode(rawCode: unknown, userId: number) {
-  const company = await ensureCompany();
   const fails = await db().auditLog.count({
     where: { actorUserId: userId, action: "invite.code_fail", at: { gt: new Date(Date.now() - 10 * 60_000) } },
   });
@@ -55,7 +54,8 @@ export async function acceptInviteCode(rawCode: unknown, userId: number) {
   const code = normalizeCode(rawCode);
   const invite = code.length >= 4 ? await db().invite.findUnique({ where: { code } }) : null;
   if (!invite) {
-    await audit(db(), { companyId: company.id, actorUserId: userId, action: "invite.code_fail", entity: "invite", entityId: code.slice(0, 12) || "-" });
+    // The person may have no company yet, so the log entry has none either.
+    await audit(db(), { companyId: null, actorUserId: userId, action: "invite.code_fail", entity: "invite", entityId: code.slice(0, 12) || "-" });
     throw new AppError("invite_code_wrong", 400);
   }
   return acceptInvite(invite.token, userId);
@@ -133,7 +133,7 @@ function usable(i: Invite & { branch: { active: boolean } }): boolean {
 }
 
 export async function previewInvite(token: string, userId: number) {
-  const invite = await db().invite.findUnique({ where: { token }, include: { branch: true } });
+  const invite = await db().invite.findUnique({ where: { token }, include: { branch: { include: { company: true } } } });
   if (!invite) return { valid: false, branchName: "", role: "WORKER" as const, alreadyMember: false };
   const member = await db().branchMember.findUnique({
     where: { branchId_userId: { branchId: invite.branchId, userId } },
@@ -143,21 +143,31 @@ export async function previewInvite(token: string, userId: number) {
       ? await db().adminBranch.findUnique({ where: { userId_branchId: { userId, branchId: invite.branchId } } })
       : null;
   return {
-    valid: usable(invite),
+    // A stopped or expired company does not accept new people.
+    valid: usable(invite) && isUsable(invite.branch.company),
     branchName: invite.branch.name,
     role: invite.role,
     alreadyMember: invite.role === "ADMIN" ? Boolean(admin) : Boolean(member?.active),
   };
 }
 
-/** Joins the branch. The use count is raised atomically, so a single-use link works only once. */
+/**
+ * Joins the company of the invite's branch and makes it the user's current company.
+ * The use count is raised atomically, so a single-use link works only once.
+ */
 export async function acceptInvite(token: string, userId: number) {
   const user = await db().user.findUniqueOrThrow({ where: { id: userId } });
   if (!user.phone || !user.nameConfirmedAt) throw new AppError("bad_request", 400);
-  const company = await ensureCompany();
   return transaction(async (tx) => {
-    const invite = await tx.invite.findUnique({ where: { token }, include: { branch: true } });
-    if (!invite || !usable(invite) || invite.branch.companyId !== company.id) throw new AppError("invite_invalid", 400);
+    const invite = await tx.invite.findUnique({ where: { token }, include: { branch: { include: { company: true } } } });
+    if (!invite || !usable(invite)) throw new AppError("invite_invalid", 400);
+    const company = invite.branch.company;
+    if (!isUsable(company)) throw new AppError("company_inactive", 403);
+    // Worker limit: a new active worker must fit under max_workers.
+    if (invite.role === "WORKER" && company.maxWorkers !== null) {
+      const already = await tx.branchMember.findFirst({ where: { userId, active: true, branch: { companyId: company.id } } });
+      if (!already && (await activeWorkerCount(company.id, tx)) >= company.maxWorkers) throw new AppError("company_full", 400);
+    }
     const claimed = await tx.invite.updateMany({
       where: {
         id: invite.id,
@@ -190,6 +200,7 @@ export async function acceptInvite(token: string, userId: number) {
         update: { active: true, leftAt: null },
       });
     }
+    await tx.user.update({ where: { id: userId }, data: { currentCompanyId: company.id } });
     await audit(tx, {
       companyId: company.id,
       actorUserId: userId,

@@ -3,7 +3,7 @@ import { sendText } from "../../bot/api.ts";
 import { t } from "../../i18n/index.ts";
 import { botUsername } from "../../lib/appConfig.ts";
 import { db } from "../../lib/db.ts";
-import { ensureCompany, updateProfile } from "../../users/service.ts";
+import { loadActor, switchCompany, updateProfile } from "../../users/service.ts";
 import { body, type AppEnv } from "../context.ts";
 import type { User } from "../../generated/prisma/client.ts";
 import type { Actor } from "../../auth/permissions.ts";
@@ -11,7 +11,7 @@ import type { Actor } from "../../auth/permissions.ts";
 export const meRoutes = new Hono<AppEnv>();
 
 export async function mePayload(user: User, actor: Actor, startParam: string | null) {
-  const company = await ensureCompany();
+  const company = actor.companyId ? await db().company.findUnique({ where: { id: actor.companyId } }) : null;
   const branches = await db().branch.findMany({
     where: { id: { in: actor.memberBranchIds } },
     select: { id: true, name: true, timezone: true },
@@ -34,7 +34,18 @@ export async function mePayload(user: User, actor: Actor, startParam: string | n
     },
     role: actor.role,
     isStaff: actor.role === "OWNER" || actor.role === "ADMIN",
-    company: { id: company.id, name: company.name, currency: company.currency },
+    // The current company (null = none yet). Owners also see why it is blocked and until when it is paid.
+    company: company
+      ? {
+          id: company.id,
+          name: company.name,
+          currency: company.currency,
+          state: actor.companyState,
+          paidUntil: actor.role === "OWNER" ? company.paidUntil : null,
+        }
+      : null,
+    companies: actor.companies,
+    platform: actor.platform,
     branches,
     adminBranchIds: actor.adminBranchIds,
     startParam,
@@ -55,6 +66,14 @@ meRoutes.post("/request-phone", async (c) => {
     },
   });
   return c.json({ sent: result === "ok" });
+});
+
+/** Switches the current company (only to one where the user is an active member). */
+meRoutes.post("/company", async (c) => {
+  const b = await body<{ companyId?: number }>(c);
+  await switchCompany(c.get("user").id, b.companyId);
+  const user = await db().user.findUniqueOrThrow({ where: { id: c.get("user").id } });
+  return c.json(await mePayload(user, await loadActor(user), c.get("init").startParam));
 });
 
 meRoutes.post("/", async (c) => {

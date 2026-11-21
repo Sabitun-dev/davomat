@@ -3,7 +3,7 @@
 import { signInitData } from "../../src/auth/initData.ts";
 import type { Actor } from "../../src/auth/permissions.ts";
 import { db } from "../../src/lib/db.ts";
-import { ensureCompany, loadActor } from "../../src/users/service.ts";
+import { loadActor } from "../../src/users/service.ts";
 import { TEST_BOT_TOKEN } from "./db.ts";
 
 let nextTelegramId = 50_000;
@@ -22,25 +22,37 @@ export async function makeUser(name = "Test User", telegramId = nextTelegramId++
   });
 }
 
-export async function makeOwner(): Promise<Actor> {
-  const company = await ensureCompany();
+export async function makeCompany(name = "Test company", data: { active?: boolean; paidUntil?: string | null; maxWorkers?: number | null } = {}) {
+  return db().company.create({ data: { name, ...data } });
+}
+
+/** The first company of the test database (made on first use). Tests that need two companies use makeCompany. */
+export async function firstCompany() {
+  return (await db().company.findFirst({ orderBy: { id: "asc" } })) ?? makeCompany();
+}
+
+export async function makeOwner(companyId?: number): Promise<Actor> {
+  const id = companyId ?? (await firstCompany()).id;
   const user = await makeUser("Owner");
-  await db().membership.create({ data: { userId: user.id, companyId: company.id, role: "OWNER" } });
+  await db().membership.create({ data: { userId: user.id, companyId: id, role: "OWNER" } });
   return loadActor(user);
 }
 
-export async function makeAdmin(branchIds: number[]): Promise<Actor> {
-  const company = await ensureCompany();
+/** An admin of the given branches (their company), or of the first company when no branch is given. */
+export async function makeAdmin(branchIds: number[], companyId?: number): Promise<Actor> {
+  const branch = branchIds.length ? await db().branch.findUniqueOrThrow({ where: { id: branchIds[0] } }) : null;
+  const id = companyId ?? branch?.companyId ?? (await firstCompany()).id;
   const user = await makeUser("Admin");
-  await db().membership.create({ data: { userId: user.id, companyId: company.id, role: "ADMIN" } });
+  await db().membership.create({ data: { userId: user.id, companyId: id, role: "ADMIN" } });
   for (const branchId of branchIds) await db().adminBranch.create({ data: { userId: user.id, branchId } });
   return loadActor(user);
 }
 
+/** A worker of a branch (and a WORKER member of that branch's company). */
 export async function makeWorker(branchId: number, name = "Worker", defaultDailyAmount: number | null = null) {
-  const company = await ensureCompany();
+  const branch = await db().branch.findUniqueOrThrow({ where: { id: branchId } });
   const user = await makeUser(name);
-  await db().membership.create({ data: { userId: user.id, companyId: company.id, role: "WORKER" } });
+  await db().membership.create({ data: { userId: user.id, companyId: branch.companyId, role: "WORKER" } });
   await db().branchMember.create({ data: { userId: user.id, branchId, defaultDailyAmount } });
   return { user, actor: await loadActor(user) };
 }

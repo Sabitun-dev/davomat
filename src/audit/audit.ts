@@ -15,7 +15,7 @@ export function toJson(value: unknown): Json {
 export async function audit(
   tx: Tx | ReturnType<typeof db>,
   entry: {
-    companyId: number;
+    companyId: number | null;
     actorUserId: number | null;
     action: string;
     entity: string;

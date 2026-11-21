@@ -95,7 +95,7 @@ export function MemberSheet({
         <Field label={t("mem.default_amount")} error={amountOk ? undefined : t("err.bad_amount")}>
           <MoneyInput
             value={amount}
-            currency={me.company.currency}
+            currency={me.company!.currency}
             onChange={(v, ok) => {
               setAmount(v);
               setAmountOk(ok);

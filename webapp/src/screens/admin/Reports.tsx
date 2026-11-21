@@ -86,7 +86,7 @@ function MonthView() {
   const [comment, setComment] = useState("");
 
   const r = report.data;
-  const money = (n: number) => formatMoney(n, r?.currency ?? me.company.currency, lang);
+  const money = (n: number) => formatMoney(n, r?.currency ?? me.company!.currency, lang);
 
   const act = async (key: string, work: () => Promise<unknown>, done = t("c.saved")) => {
     setBusy(key);

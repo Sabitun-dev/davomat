@@ -14,6 +14,7 @@ import { replyUnderVideo } from "../jobs/notify.ts";
 import { suspiciousFlags } from "./flags.ts";
 import { checkGeofence } from "./geo.ts";
 import { checkTokenFreshness, parseToken } from "./qr.ts";
+import { isUsable } from "../companies/access.ts";
 import { tickAllowed, tickedUsers, workOverStatus, type WorkOverStatus } from "./workOver.ts";
 import type { AttendanceEvent, Branch, User } from "../generated/prisma/client.ts";
 
@@ -115,7 +116,9 @@ export async function recordAttempt(
     return resultOf(previous, b);
   }
 
-  const settings = await companySettings(db(), companyId);
+  // Rate limiting uses the current company's settings; everything after the scan uses the
+  // settings of the scanned branch's company.
+  let settings = await companySettings(db(), companyId);
   const base = {
     companyId,
     userId: user.id,
@@ -160,8 +163,15 @@ export async function recordAttempt(
   const token = typeof input.qrToken === "string" ? parseToken(env.qrSecret, input.qrToken) : null;
   if (!token) return saveRejection({ reason: "bad_qr" });
   const branch = await db().branch.findUnique({ where: { id: token.branchId } });
-  if (!branch || branch.companyId !== companyId) return saveRejection({ reason: "bad_qr" });
+  // A branch of a company this person does not belong to looks like any unknown QR code.
+  const membership = branch
+    ? await db().membership.findUnique({ where: { userId_companyId: { userId: user.id, companyId: branch.companyId } }, include: { company: true } })
+    : null;
+  if (!branch || !membership?.active) return saveRejection({ reason: "bad_qr" });
+  if (!isUsable(membership.company)) return saveRejection({ reason: "company_inactive", branch });
   if (!branch.active) return saveRejection({ reason: "branch_inactive", branch });
+  base.companyId = branch.companyId;
+  settings = parseSettings(membership.company.settings);
   const member = await db().branchMember.findUnique({ where: { branchId_userId: { branchId: branch.id, userId: user.id } } });
   if (!member?.active) {
     const elsewhere = await db().branchMember.count({ where: { userId: user.id, active: true } });
@@ -171,7 +181,7 @@ export async function recordAttempt(
   if (freshness !== "ok") return saveRejection({ reason: freshness, branch });
 
   const local = toLocal(now, branch.timezone);
-  if (await isMonthLocked(db(), companyId, monthOf(local.date))) return saveRejection({ reason: "month_locked", branch });
+  if (await isMonthLocked(db(), branch.companyId, monthOf(local.date))) return saveRejection({ reason: "month_locked", branch });
 
   try {
     const accepted = await transaction(async (tx) => {

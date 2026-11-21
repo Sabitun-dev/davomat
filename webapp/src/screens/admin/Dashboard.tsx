@@ -65,7 +65,7 @@ export default function Dashboard() {
 
   if (branches.data && branches.data.length === 0)
     return (
-      <Page title={t("a.tab_today")} subtitle={me.company.name}>
+      <Page title={t("a.tab_today")} subtitle={me.company!.name}>
         <EmptyState picture="branch" text={t("dash.no_branches")} />
       </Page>
     );
@@ -82,7 +82,7 @@ export default function Dashboard() {
     );
 
   return (
-    <Page title={t("a.tab_today")} subtitle={me.company.name}>
+    <Page title={t("a.tab_today")} subtitle={me.company!.name}>
       <BranchChips value={branchId} onChange={setBranchId} />
       {dash.error && <ErrorState error={dash.error} onRetry={dash.reload} />}
       {!dash.data && !dash.error && <SkeletonScreen />}

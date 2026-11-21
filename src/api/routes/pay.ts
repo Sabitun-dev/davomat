@@ -1,7 +1,7 @@
 // Admin: schedules, daily amounts, corrections, month lock, bonuses and fines.
 
 import { Hono } from "hono";
-import { canManageWorker, ensure } from "../../auth/permissions.ts";
+import { canManageWorker, ensure, managedBranchIds } from "../../auth/permissions.ts";
 import { db } from "../../lib/db.ts";
 import { badRequest } from "../../lib/errors.ts";
 import { isValidDate } from "../../shared/time.ts";
@@ -58,7 +58,7 @@ payRoutes.get("/day", async (c) => {
   if (!isValidDate(date)) throw badRequest();
   const rows = await db().branchMember.findMany({ where: { userId }, select: { branchId: true } });
   ensure(canManageWorker(c.get("actor"), rows.map((r) => r.branchId)));
-  return c.json(await dayDetail(userId, date, { admin: true }));
+  return c.json(await dayDetail(userId, date, { admin: true, branchIds: managedBranchIds(c.get("actor")) }));
 });
 payRoutes.post("/events", async (c) => c.json(await addEvent(c.get("actor"), await body(c))));
 payRoutes.patch("/events/:id", async (c) => c.json(await editEvent(c.get("actor"), intParam(c.req.param("id")), await body(c))));

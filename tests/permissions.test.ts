@@ -11,16 +11,29 @@ import {
   type Actor,
 } from "../src/auth/permissions.ts";
 
-const base = { telegramId: 1n, companyId: 1, memberBranchIds: [] as number[] };
+// Company 1 has branches 10 and 20; branch 99 belongs to another company.
+const base = {
+  telegramId: 1n,
+  companyId: 1,
+  memberBranchIds: [] as number[],
+  companyBranchIds: [10, 20],
+  platform: false,
+  companyState: "ok" as const,
+  companies: [],
+};
 const owner: Actor = { ...base, userId: 1, role: "OWNER", adminBranchIds: [] };
 const admin: Actor = { ...base, userId: 2, role: "ADMIN", adminBranchIds: [10] };
 const worker: Actor = { ...base, userId: 3, role: "WORKER", adminBranchIds: [], memberBranchIds: [10] };
-const stranger: Actor = { ...base, userId: 4, role: "NONE", adminBranchIds: [], companyId: null };
+const stranger: Actor = { ...base, userId: 4, role: "NONE", adminBranchIds: [], companyId: null, companyBranchIds: [], companyState: "none" };
 
 describe("permissions", () => {
-  it("owner can do everything", () => {
+  it("owner can do everything inside their company, nothing outside it", () => {
     expect(canManageBranch(owner, 10)).toBe(true);
-    expect(canManageBranch(owner, 99)).toBe(true);
+    expect(canManageBranch(owner, 99)).toBe(false);
+    expect(canManageWorker(owner, [99])).toBe(false);
+    expect(canViewWorker(owner, 5, [99])).toBe(false);
+    expect(canManageWorker(owner, [99, 20])).toBe(true);
+    expect(visibleBranchIds(owner, [10, 20, 99])).toEqual([10, 20]);
     expect(canManageAdmins(owner)).toBe(true);
     expect(canUnlockMonth(owner)).toBe(true);
     expect(canLockMonth(owner)).toBe(true);

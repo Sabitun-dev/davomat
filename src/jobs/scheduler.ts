@@ -6,7 +6,8 @@
 
 import { randomToken } from "../lib/crypto.ts";
 import { db, isUniqueViolation, transaction } from "../lib/db.ts";
-import { logError } from "../lib/env.ts";
+import { env, logError } from "../lib/env.ts";
+import { billingToday, isUsable } from "../companies/access.ts";
 import { parseSettings } from "../lib/settings.ts";
 import { sendText } from "../bot/api.ts";
 import { escapeHtml, t } from "../i18n/index.ts";
@@ -149,12 +150,53 @@ async function processBranch(branch: Branch, now: Date, summary: RunSummary) {
   }
 }
 
+function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400_000);
+}
+
+/**
+ * Subscription reminders (each once per day): 3 days before paid-until and on the day to the
+ * company owners and to the platform owners; the day after it expires, to the platform owners.
+ */
+export async function paymentReminders(now: Date, summary: RunSummary): Promise<void> {
+  const today = billingToday(now);
+  const platform = env.ownerTelegramIds;
+  const platformUsers = await db().user.findMany({ where: { telegramId: { in: platform } }, select: { telegramId: true, language: true } });
+  const langOf = (id: bigint) => platformUsers.find((u) => u.telegramId === id)?.language ?? env.defaultLanguage;
+  const companies = await db().company.findMany({ where: { active: true, paidUntil: { not: null } } });
+  for (const c of companies) {
+    const left = daysBetween(today, c.paidUntil!);
+    const key = `${c.id}:${today}`;
+    if (left === 3 || left === 0) {
+      const owners = await db().membership.findMany({ where: { companyId: c.id, role: "OWNER", active: true }, include: { user: true } });
+      for (const o of owners.filter((m) => !m.user.botBlocked)) {
+        const text = t(o.user.language, "pay.owner_soon", { date: c.paidUntil! });
+        if (await sendOnce("pay_soon_owner", o.user.telegramId, key, () => sendText(o.user.telegramId, text))) summary.summaries++;
+      }
+      for (const p of platform) {
+        const text = t(langOf(p), "pay.platform_soon", { company: c.name, date: c.paidUntil! });
+        if (await sendOnce("pay_soon_platform", p, key, () => sendText(p, text))) summary.summaries++;
+      }
+    }
+    if (left === -1) {
+      for (const p of platform) {
+        const text = t(langOf(p), "pay.platform_stopped", { company: c.name });
+        if (await sendOnce("pay_stopped_platform", p, key, () => sendText(p, text))) summary.summaries++;
+      }
+    }
+  }
+}
+
 export async function runScheduler(now = new Date()): Promise<RunSummary> {
   const summary: RunSummary = { autoClosed: 0, recalculated: 0, reminders: 0, summaries: 0, gpsCleared: 0, errors: 0 };
   const run = await db().schedulerRun.create({ data: {} });
   try {
-    const branches = await db().branch.findMany({ where: { active: true } });
-    for (const branch of branches) {
+    // Stopped or expired companies are skipped: no auto-close, reminders or summaries.
+    const today = billingToday(now);
+    const branches = (await db().branch.findMany({ where: { active: true }, include: { company: true } })).filter((b) =>
+      isUsable(b.company, today),
+    );
+    for (const { company: _company, ...branch } of branches) {
       try {
         await processBranch(branch, now, summary);
       } catch (err) {
@@ -163,13 +205,16 @@ export async function runScheduler(now = new Date()): Promise<RunSummary> {
       }
     }
 
+    await paymentReminders(now, summary);
+
     for (const company of await db().company.findMany()) {
       const settings = parseSettings(company.settings);
+      const usable = isUsable(company, today);
       const tz = branches.find((b) => b.companyId === company.id)?.timezone ?? "Asia/Tashkent";
       const local = toLocal(now, tz);
 
       // Monthly "payroll is ready" on the 1st after 09:00.
-      if (settings.monthlyPayrollMessage && local.date.endsWith("-01") && local.minute >= 9 * 60) {
+      if (usable && settings.monthlyPayrollMessage && local.date.endsWith("-01") && local.minute >= 9 * 60) {
         const month = shiftMonth(local.date.slice(0, 7), -1);
         const staff = await db().membership.findMany({
           where: { companyId: company.id, active: true, role: { in: ["OWNER", "ADMIN"] } },

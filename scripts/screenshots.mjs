@@ -36,6 +36,10 @@ const shots = [
   ["03-name", "s=name"],
   ["04-intro", "s=intro"],
   ["05-join-code", "s=nobranch"],
+  ["06-blocked", "s=blocked"],
+  ["50-platform-list", "s=platform"],
+  ["51-platform-new", "s=platform", undefined, "new"],
+  ["52-platform-company", "s=platform&screen=platformCompany&p=" + encodeURIComponent('{"id":2}')],
   ["10-worker-home", "s=worker"],
   ["11-worker-working", "s=worker-working"],
   ["12-worker-break", "s=worker-break"],
@@ -83,6 +87,10 @@ for (const [name, query, tab, extra] of shots) {
       if (tab) await page.addInitScript((t) => sessionStorage.setItem("adminTab", t), tab);
       await page.goto(`http://localhost:4789/app/?${query}`);
       await page.waitForTimeout(1200);
+      if (extra === "new") {
+        await page.getByRole("button", { name: /Yangi/ }).first().click();
+        await page.waitForTimeout(800);
+      }
       if (extra === "year") {
         await page.getByRole("tab").nth(1).click();
         await page.waitForTimeout(1200);

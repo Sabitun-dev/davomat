@@ -30,10 +30,13 @@ describe("users and first-open flow", () => {
     expect(normalizePhone("123")).toBeNull();
   });
 
-  it("makes owners from OWNER_TELEGRAM_IDS", async () => {
+  it("OWNER_TELEGRAM_IDS are platform owners, not owners of any company", async () => {
     const user = await upsertTelegramUser({ id: 1000, first_name: "Boss" });
     const actor = await loadActor(user);
-    expect(actor.role).toBe("OWNER");
+    expect(actor.platform).toBe(true);
+    expect(actor.role).toBe("NONE");
+    expect(actor.companyId).toBeNull();
+    expect(await prisma.membership.count({ where: { userId: user.id } })).toBe(0);
   });
 
   it("a new user has no role", async () => {

@@ -83,6 +83,18 @@ model Company {
   /// See src/lib/settings.ts for the shape and defaults.
   settings  Json     @default("{}")
   createdAt DateTime @default(now()) @map("created_at")
+  /// Switched off by the platform owner (data is kept).
+  active          Boolean @default(true)
+  /// Last paid day, local "YYYY-MM-DD" (Asia/Tashkent). null = no end date.
+  paidUntil       String? @map("paid_until")
+  /// null = unlimited active workers.
+  maxWorkers      Int?    @map("max_workers")
+  /// Private note of the platform owner (phone, price, deal).
+  note            String  @default("")
+  /// The company Telegram group where workers send round videos.
+  groupChatId     BigInt? @unique @map("group_chat_id")
+  groupTitle      String? @map("group_title")
+  createdByUserId Int?    @map("created_by_user_id")
 
   memberships Membership[]
   branches    Branch[]
@@ -111,6 +123,8 @@ model User {
   botBlocked      Boolean   @default(false) @map("bot_blocked")
   lastSeenAt      DateTime? @map("last_seen_at")
   createdAt       DateTime  @default(now()) @map("created_at")
+  /// The company this user is looking at (they can belong to several).
+  currentCompanyId Int?     @map("current_company_id")
 
   memberships   Membership[]
   adminBranches AdminBranch[]
@@ -420,7 +434,8 @@ model MonthLock {
 
 model AuditLog {
   id          Int      @id @default(autoincrement())
-  companyId   Int      @map("company_id")
+  /// null for actions of people without a company (e.g. a wrong invite code).
+  companyId   Int?     @map("company_id")
   actorUserId Int?     @map("actor_user_id")
   action      String
   entity      String
@@ -430,9 +445,10 @@ model AuditLog {
   comment     String   @default("")
   at          DateTime @default(now())
 
-  company Company @relation(fields: [companyId], references: [id])
+  company Company? @relation(fields: [companyId], references: [id])
 
   @@index([companyId, entity, entityId])
+  @@index([actorUserId, action, at])
   @@map("audit_log")
 }
 

@@ -5,7 +5,8 @@ import { route } from "./mock.ts";
 const q = new URLSearchParams(location.search);
 const scenario = q.get("s") ?? "worker";
 const lang = q.get("lang") ?? "uz";
-const admin = scenario.startsWith("admin");
+const admin = scenario.startsWith("admin") || scenario === "blocked";
+const platform = scenario.startsWith("platform");
 
 // The demo always shows the current month, with "today" on the 18th.
 const MONTH = (() => {
@@ -30,9 +31,20 @@ function me() {
       phone: scenario === "phone",
       name: scenario === "name",
     },
-    role: admin ? "OWNER" : scenario === "nobranch" ? "NONE" : "WORKER",
+    role: admin ? "OWNER" : scenario === "nobranch" || platform ? "NONE" : "WORKER",
     isStaff: admin,
-    company: { id: 1, name: "Sobitxon Savdo", currency: "UZS" },
+    company:
+      scenario === "nobranch" || platform
+        ? null
+        : {
+            id: 1,
+            name: "Sobitxon Savdo",
+            currency: "UZS",
+            state: scenario === "blocked" ? "expired" : "ok",
+            paidUntil: scenario === "blocked" ? "2026-11-15" : null,
+          },
+    companies: scenario === "blocked" ? [{ id: 1, name: "Sobitxon Savdo", role: "OWNER" }, { id: 2, name: "Eskardin", role: "ADMIN" }] : [],
+    platform: platform || admin,
     branches: scenario === "nobranch" ? [] : [{ id: 1, name: "Chilonzor", timezone: "Asia/Tashkent" }],
     adminBranchIds: [],
     startParam: null,
@@ -300,6 +312,34 @@ export function registerScenarios() {
       }),
     };
   });
+  const companies = [
+    ["Sobitxon Savdo", "Sobitxon Abdullayev", true, "2027-01-20", 34, 12, 50, "ok"],
+    ["Eskardin Pardalar", "Maruf Karimov", true, "2026-11-25", 4, 18, 20, "ok"],
+    ["Yunusobod Market", null, false, "2026-11-10", -11, 0, null, "expired"],
+    ["Chorsu Tekstil", "Aziz Rahimov", true, null, null, 41, null, "suspended"],
+  ] as const;
+  const platformCompany = (i: number) => {
+    const [name, owner, opened, paidUntil, daysLeft, workers, maxWorkers, state] = companies[i];
+    return {
+      id: i + 1,
+      name,
+      active: state !== "suspended",
+      paidUntil,
+      maxWorkers,
+      note: i === 0 ? "+998 90 123 45 67 · 300 000 so'm/oy" : "",
+      currency: "UZS",
+      groupTitle: i === 0 ? "Sobitxon — davomat" : null,
+      hasGroup: i === 0,
+      state,
+      daysLeft,
+      workers,
+      owners: [{ userId: i + 10, telegramId: String(5_000_000 + i), name: owner, opened }],
+      createdAt: "2026-10-01T00:00:00Z",
+      stats: { branches: 3, checkIns30: 412, lastActivity: "2026-11-20T04:12:00Z" },
+    };
+  };
+  route(/^GET \/platform\/companies$/, () => companies.map((_, i) => platformCompany(i)));
+  route(/^GET \/platform\/companies\/\d+$/, (u) => platformCompany(Number(u.pathname.split("/").pop()) - 1));
   route(/^GET \/admin\/reports\/worker-days/, () => ({ month: MONTH, today: TODAY, days: monthDays() }));
   route(/^GET \/admin\/review/, () => [
     { userId: 2, name: "Dilnoza Karimova", branchName: "Chilonzor", date: `${MONTH}-16`, flags: ["no_checkout"], status: "ON_TIME" },

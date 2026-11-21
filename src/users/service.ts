@@ -2,10 +2,11 @@
 
 import type { Actor, RoleName } from "../auth/permissions.ts";
 import type { TelegramUser } from "../auth/initData.ts";
-import { db, type Tx } from "../lib/db.ts";
+import { db } from "../lib/db.ts";
 import { env } from "../lib/env.ts";
-import { badRequest } from "../lib/errors.ts";
-import type { Company, User } from "../generated/prisma/client.ts";
+import { badRequest, forbidden } from "../lib/errors.ts";
+import { companyState } from "../companies/access.ts";
+import type { User } from "../generated/prisma/client.ts";
 
 export const LANGUAGES = ["uz", "ru", "en"] as const;
 export type Language = (typeof LANGUAGES)[number];
@@ -14,13 +15,6 @@ export function pickLanguage(code: string | undefined | null): Language {
   if (code && (LANGUAGES as readonly string[]).includes(code)) return code as Language;
   if (code?.startsWith("ru")) return "ru";
   return env.defaultLanguage;
-}
-
-/** The single company of this installation, created on first use. */
-export async function ensureCompany(tx: Tx | ReturnType<typeof db> = db()): Promise<Company> {
-  const existing = await tx.company.findFirst({ orderBy: { id: "asc" } });
-  if (existing) return existing;
-  return tx.company.create({ data: { name: "Kompaniya" } });
 }
 
 /** Finds or creates the user for a Telegram account and refreshes their Telegram names. */
@@ -44,36 +38,66 @@ export async function upsertTelegramUser(tg: TelegramUser): Promise<User> {
   return db().user.update({ where: { id: existing.id }, data: { ...names, lastSeenAt: new Date() } });
 }
 
-/** Builds the Actor (role and branches) for a user. Owners listed in OWNER_TELEGRAM_IDS are added here. */
+/**
+ * Builds the Actor for a user: their current company, role and branches there.
+ * The current company is users.current_company_id when that membership is active,
+ * otherwise the oldest active membership. Platform owners (OWNER_TELEGRAM_IDS) are NOT
+ * made owners of any company automatically: they add companies in the platform panel.
+ */
 export async function loadActor(user: User): Promise<Actor> {
-  const company = await ensureCompany();
-  let membership = await db().membership.findUnique({
-    where: { userId_companyId: { userId: user.id, companyId: company.id } },
+  const platform = env.ownerTelegramIds.includes(user.telegramId);
+  const memberships = await db().membership.findMany({
+    where: { userId: user.id, active: true },
+    include: { company: true },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
-  const isEnvOwner = env.ownerTelegramIds.includes(user.telegramId);
-  if (isEnvOwner && (!membership || membership.role !== "OWNER" || !membership.active)) {
-    membership = await db().membership.upsert({
-      where: { userId_companyId: { userId: user.id, companyId: company.id } },
-      create: { userId: user.id, companyId: company.id, role: "OWNER" },
-      update: { role: "OWNER", active: true },
-    });
+  const current = memberships.find((m) => m.companyId === user.currentCompanyId) ?? memberships[0];
+  const companies = memberships.map((m) => ({ id: m.companyId, name: m.company.name, role: m.role as RoleName }));
+  if (!current) {
+    return {
+      userId: user.id,
+      telegramId: user.telegramId,
+      companyId: null,
+      role: "NONE",
+      adminBranchIds: [],
+      memberBranchIds: [],
+      companyBranchIds: [],
+      platform,
+      companyState: "none",
+      companies,
+    };
   }
-  const role: RoleName = membership?.active ? membership.role : "NONE";
-  const [adminBranches, memberBranches] = await Promise.all([
-    role === "ADMIN" ? db().adminBranch.findMany({ where: { userId: user.id }, select: { branchId: true } }) : [],
+  const companyId = current.companyId;
+  const [branches, adminBranches, memberBranches] = await Promise.all([
+    db().branch.findMany({ where: { companyId }, select: { id: true } }),
+    current.role === "ADMIN"
+      ? db().adminBranch.findMany({ where: { userId: user.id, branch: { companyId } }, select: { branchId: true } })
+      : [],
     db().branchMember.findMany({
-      where: { userId: user.id, active: true, branch: { active: true, companyId: company.id } },
+      where: { userId: user.id, active: true, branch: { active: true, companyId } },
       select: { branchId: true },
     }),
   ]);
   return {
     userId: user.id,
     telegramId: user.telegramId,
-    companyId: membership?.active ? company.id : null,
-    role,
+    companyId,
+    role: current.role,
     adminBranchIds: adminBranches.map((b) => b.branchId),
     memberBranchIds: memberBranches.map((b) => b.branchId),
+    companyBranchIds: branches.map((b) => b.id),
+    platform,
+    companyState: companyState(current.company),
+    companies,
   };
+}
+
+/** Switches the current company; only to a company where the user has an active membership. */
+export async function switchCompany(userId: number, companyId: unknown): Promise<void> {
+  if (typeof companyId !== "number" || !Number.isInteger(companyId)) throw badRequest();
+  const m = await db().membership.findUnique({ where: { userId_companyId: { userId, companyId } } });
+  if (!m?.active) throw forbidden();
+  await db().user.update({ where: { id: userId }, data: { currentCompanyId: companyId } });
 }
 
 export function displayName(u: Pick<User, "fullName" | "firstName" | "lastName">): string {

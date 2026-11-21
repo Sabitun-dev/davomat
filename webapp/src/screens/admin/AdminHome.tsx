@@ -1,7 +1,7 @@
 // Admin root: four tabs at the bottom (Today, Branches, Reports, More).
 
 import { lazy, Suspense, useState } from "react";
-import { Building2, ChartColumn, ChevronRight, Ellipsis, MapPin, Plus, Settings, Shield, SlidersHorizontal, Sun, UserRound } from "lucide-react";
+import { Building2, ChartColumn, ChevronRight, Ellipsis, Globe, MapPin, Plus, Settings, Shield, SlidersHorizontal, Sun, UserRound } from "lucide-react";
 import { useApi } from "../../api.ts";
 import { useT } from "../../i18n/index.tsx";
 import { useNav } from "../../nav.tsx";
@@ -118,7 +118,14 @@ function MoreTab() {
   const nav = useNav();
   const { me } = useSession();
   return (
-    <Page title={t("more.title")} subtitle={`${me.company.name} · ${t(`role.${me.role}`)}`}>
+    <Page title={t("more.title")} subtitle={`${me.company!.name} · ${t(`role.${me.role}`)}`}>
+      {me.platform && (
+        <div className="mb-3">
+          <ListCard>
+            <ListRow icon={<Globe size={20} />} title={t("pl.title")} subtitle={t("pl.subtitle")} onClick={() => nav.push("platform")} />
+          </ListCard>
+        </div>
+      )}
       <ListCard>
         {me.branches.length > 0 && (
           <ListRow icon={<UserRound size={20} />} title={t("a.my_attendance")} onClick={() => nav.push("workerHome")} />

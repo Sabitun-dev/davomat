@@ -10,7 +10,7 @@ export async function listPeople(actor: Actor) {
   ensure(canManageAdmins(actor));
   const rows = await db().membership.findMany({
     where: { companyId: actor.companyId!, active: true },
-    include: { user: { include: { adminBranches: { select: { branchId: true } } } } },
+    include: { user: { include: { adminBranches: { where: { branch: { companyId: actor.companyId! } }, select: { branchId: true } } } } },
     orderBy: { createdAt: "asc" },
   });
   return rows.map((m) => ({
@@ -34,10 +34,11 @@ export async function setAdmin(actor: Actor, userId: number, branchIds: unknown)
     where: { id: { in: branchIds as number[] }, companyId: actor.companyId! },
     select: { id: true },
   });
-  const before = await db().adminBranch.findMany({ where: { userId }, select: { branchId: true } });
+  const before = await db().adminBranch.findMany({ where: { userId, branch: { companyId: actor.companyId! } }, select: { branchId: true } });
   await transaction(async (tx) => {
     if (membership.role !== "OWNER") await tx.membership.update({ where: { id: membership.id }, data: { role: "ADMIN" } });
-    await tx.adminBranch.deleteMany({ where: { userId } });
+    // Only this company's admin rights change; other companies are untouched.
+    await tx.adminBranch.deleteMany({ where: { userId, branch: { companyId: actor.companyId! } } });
     await tx.adminBranch.createMany({ data: valid.map((b) => ({ userId, branchId: b.id })) });
     await audit(tx, {
       companyId: actor.companyId!,
@@ -60,7 +61,7 @@ export async function removeAdmin(actor: Actor, userId: number) {
   if (membership.role === "OWNER") throw new AppError("last_owner", 400);
   await transaction(async (tx) => {
     await tx.membership.update({ where: { id: membership.id }, data: { role: "WORKER" } });
-    await tx.adminBranch.deleteMany({ where: { userId } });
+    await tx.adminBranch.deleteMany({ where: { userId, branch: { companyId: actor.companyId! } } });
     await audit(tx, {
       companyId: actor.companyId!,
       actorUserId: actor.userId,

@@ -18,23 +18,23 @@ workerRoutes.post("/attendance", async (c) => {
 
 workerRoutes.get("/today", async (c) => {
   const branchId = Number(c.req.query("branchId")) || undefined;
-  return c.json(await workerToday(c.get("user").id, branchId));
+  return c.json(await workerToday(c.get("user").id, c.get("actor").companyBranchIds, branchId));
 });
 
 workerRoutes.get("/month", async (c) => {
   const month = c.req.query("month") ?? "";
   if (!isValidMonth(month)) throw badRequest();
-  return c.json(await workerMonth(c.get("user").id, month));
+  return c.json(await workerMonth(c.get("user").id, month, c.get("actor").companyBranchIds));
 });
 
 workerRoutes.get("/history", async (c) => {
   const before = c.req.query("before");
   if (before && !isValidDate(before)) throw badRequest();
-  return c.json(await workerHistory(c.get("user").id, before));
+  return c.json(await workerHistory(c.get("user").id, c.get("actor").companyBranchIds, before));
 });
 
 workerRoutes.get("/day", async (c) => {
   const date = c.req.query("date") ?? "";
   if (!isValidDate(date)) throw badRequest();
-  return c.json(await dayDetail(c.get("user").id, date, { admin: false }));
+  return c.json(await dayDetail(c.get("user").id, date, { admin: false, branchIds: c.get("actor").companyBranchIds }));
 });

@@ -4,7 +4,8 @@ import { Hono, type MiddlewareHandler } from "hono";
 import { isStaff } from "../auth/permissions.ts";
 import { AppError, forbidden } from "../lib/errors.ts";
 import { logError } from "../lib/env.ts";
-import { requireTelegram, type AppEnv } from "./context.ts";
+import { requirePlatform, requireTelegram, requireUsableCompany, type AppEnv } from "./context.ts";
+import { platformRoutes } from "./routes/platform.ts";
 import { branchRoutes } from "./routes/branches.ts";
 import { inviteRoutes } from "./routes/invites.ts";
 import { meRoutes } from "./routes/me.ts";
@@ -33,11 +34,15 @@ export function createApp() {
   app.route("/", publicRoutes);
 
   // Everything below needs a valid Telegram initData.
-  for (const prefix of ["/me", "/invites", "/worker", "/admin"]) {
+  for (const prefix of ["/me", "/invites", "/worker", "/admin", "/platform"]) {
     app.use(prefix, requireTelegram);
     app.use(`${prefix}/*`, requireTelegram);
   }
+  // A stopped or expired company: no worker or admin action works (checked here, on the server).
+  app.use("/worker/*", requireUsableCompany);
+  app.use("/admin/*", requireUsableCompany);
   app.use("/admin/*", requireStaff);
+  app.use("/platform/*", requirePlatform);
 
   app.route("/me", meRoutes);
   app.route("/invites", inviteRoutes);
@@ -45,6 +50,7 @@ export function createApp() {
   app.route("/admin", branchRoutes);
   app.route("/admin", payRoutes);
   app.route("/admin", reportRoutes);
+  app.route("/platform", platformRoutes);
 
   return app;
 }

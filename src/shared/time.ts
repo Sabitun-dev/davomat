@@ -134,3 +134,12 @@ export function localMinute(instant: Date, tz: string): number {
 export function localHHMM(instant: Date | string, tz: string): string {
   return minuteToHHMM(localMinute(new Date(instant), tz));
 }
+
+/** "2026-01-31" + 1 month -> "2026-02-28" (the day is kept when it exists, else the month's last day). */
+export function addMonths(date: string, n: number): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const first = new Date(Date.UTC(y, m - 1 + n, 1));
+  const last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+  first.setUTCDate(Math.min(d, last));
+  return first.toISOString().slice(0, 10);
+}

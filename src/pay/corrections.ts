@@ -74,7 +74,7 @@ export async function addEvent(
   // No branch given (an empty day): the worker's oldest active branch.
   const branchId =
     Number(raw.branchId) ||
-    (await db().branchMember.findFirst({ where: { userId, active: true }, orderBy: { joinedAt: "asc" } }))?.branchId ||
+    (await db().branchMember.findFirst({ where: { userId, active: true, branch: { companyId: actor.companyId! } }, orderBy: { joinedAt: "asc" } }))?.branchId ||
     0;
   const branch = await db().branch.findUnique({ where: { id: branchId } });
   if (!branch || branch.companyId !== actor.companyId) throw badRequest();

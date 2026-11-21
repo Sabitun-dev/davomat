@@ -101,7 +101,7 @@ function WorkersTab({ branch }: { branch: Detail }) {
       key={m.memberId}
       icon={<span className="text-[16px] font-bold">{m.name.slice(0, 1)}</span>}
       title={m.name}
-      subtitle={[m.position, m.defaultDailyAmount !== null ? formatMoney(m.defaultDailyAmount, me.company.currency) : null].filter(Boolean).join(" · ") || m.phone}
+      subtitle={[m.position, m.defaultDailyAmount !== null ? formatMoney(m.defaultDailyAmount, me.company!.currency) : null].filter(Boolean).join(" · ") || m.phone}
       onClick={() => setOpen(m)}
     />
   );

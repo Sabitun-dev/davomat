@@ -46,7 +46,7 @@ export default function HistoryScreen() {
             <ListRow
               key={r.date}
               title={dayLabel(r.date, lang)}
-              subtitle={[r.checkIn && r.checkOut ? `${r.checkIn}–${r.checkOut}` : r.checkIn, r.amount !== null ? formatMoney(r.earned, me.company.currency, lang) : null].filter(Boolean).join(" · ") || r.branchName}
+              subtitle={[r.checkIn && r.checkOut ? `${r.checkIn}–${r.checkOut}` : r.checkIn, r.amount !== null ? formatMoney(r.earned, me.company!.currency, lang) : null].filter(Boolean).join(" · ") || r.branchName}
               right={<StatusChip look={lookOf(r)} text={r.lateMin > 0 && lookOf(r) === "LATE" ? t("w.late_min", { n: r.lateMin }) : undefined} />}
               onClick={() => nav.push("day", { date: r.date })}
             />

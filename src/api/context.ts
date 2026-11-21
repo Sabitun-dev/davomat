@@ -23,6 +23,20 @@ export const requireTelegram: MiddlewareHandler<AppEnv> = async (c, next) => {
   await next();
 };
 
+/** /worker and /admin: the current company must exist and be usable (checked on every request). */
+export const requireUsableCompany: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const state = c.get("actor").companyState;
+  if (state === "none") throw new AppError("not_member", 403);
+  if (state !== "ok") throw new AppError("company_inactive", 403);
+  await next();
+};
+
+/** /platform: only Telegram ids listed in OWNER_TELEGRAM_IDS. */
+export const requirePlatform: MiddlewareHandler<AppEnv> = async (c, next) => {
+  if (!c.get("actor").platform) throw new AppError("forbidden", 403);
+  await next();
+};
+
 export async function body<T = Record<string, unknown>>(c: Ctx): Promise<T> {
   try {
     const data = await c.req.json();

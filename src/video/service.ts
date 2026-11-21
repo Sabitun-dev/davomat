@@ -4,6 +4,7 @@
 import { db, isUniqueViolation, transaction, type Tx } from "../lib/db.ts";
 import { parseSettings, type CompanySettings } from "../lib/settings.ts";
 import { recalcDay } from "../pay/recalc.ts";
+import { groupOfCompany } from "../companies/group.ts";
 import type { AttendanceEvent } from "../generated/prisma/client.ts";
 
 /** Is a video sent at `videoAt` inside the window of an event at `eventAt`? */
@@ -29,11 +30,14 @@ export function nearest<T extends { at: Date }>(
 /** After an event is accepted: link the worker's nearest unlinked video in the window. */
 export async function linkVideoToEvent(tx: Tx, event: AttendanceEvent, settings: CompanySettings): Promise<void> {
   if (event.source !== "APP" || event.status !== "ACCEPTED") return;
+  // Only videos from the event's own company group count.
+  const groupId = await groupOfCompany(event.companyId, tx);
+  if (groupId === null) return;
   const user = await tx.user.findUniqueOrThrow({ where: { id: event.userId }, select: { telegramId: true } });
   const from = new Date(event.serverTime.getTime() - settings.videoBeforeMin * 60_000);
   const to = new Date(event.serverTime.getTime() + settings.videoAfterMin * 60_000);
   const videos = await tx.videoNote.findMany({
-    where: { userTelegramId: user.telegramId, linkedEventId: null, sentAt: { gte: from, lte: to } },
+    where: { chatId: groupId, userTelegramId: user.telegramId, linkedEventId: null, sentAt: { gte: from, lte: to } },
   });
   const pick = nearest(
     event.serverTime,
@@ -43,7 +47,12 @@ export async function linkVideoToEvent(tx: Tx, event: AttendanceEvent, settings:
   if (pick) await tx.videoNote.update({ where: { id: pick.id }, data: { linkedEventId: event.id, userId: event.userId } });
 }
 
+/**
+ * A round video in a company group. `companyId` is the company that owns the group (see
+ * companies/group.ts). The video is linked only to members of THAT company.
+ */
 export async function onGroupVideoNote(input: {
+  companyId: number;
   chatId: bigint;
   messageId: number;
   /** Forum topic of the video, if any. */
@@ -51,7 +60,12 @@ export async function onGroupVideoNote(input: {
   fromTelegramId: bigint;
   sentAt: Date;
 }): Promise<{ videoId: number; linkedEvent: AttendanceEvent | null } | null> {
-  const user = await db().user.findUnique({ where: { telegramId: input.fromTelegramId }, select: { id: true } });
+  const found = await db().user.findUnique({ where: { telegramId: input.fromTelegramId }, select: { id: true } });
+  // A person who is not an active member of this company is stored without a user link.
+  const membership = found
+    ? await db().membership.findUnique({ where: { userId_companyId: { userId: found.id, companyId: input.companyId } }, include: { company: true } })
+    : null;
+  const user = membership?.active ? found : null;
   let videoId: number;
   try {
     const v = await db().videoNote.create({
@@ -73,14 +87,13 @@ export async function onGroupVideoNote(input: {
 
   // The other direction: a video that arrives after the event.
   return transaction(async (tx) => {
-    const membership = await tx.membership.findFirst({ where: { userId: user.id, active: true }, include: { company: true } });
-    if (!membership) return { videoId, linkedEvent: null };
-    const settings = parseSettings(membership.company.settings);
+    const settings = parseSettings(membership!.company.settings);
     const from = new Date(input.sentAt.getTime() - settings.videoAfterMin * 60_000);
     const to = new Date(input.sentAt.getTime() + settings.videoBeforeMin * 60_000);
     const events = await tx.attendanceEvent.findMany({
       where: {
         userId: user.id,
+        companyId: input.companyId,
         status: "ACCEPTED",
         source: "APP",
         voided: false,

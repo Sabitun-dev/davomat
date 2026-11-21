@@ -6,7 +6,7 @@ import { useT, type Key } from "../../i18n/index.tsx";
 import { useNav } from "../../nav.tsx";
 import { useSession } from "../../session.tsx";
 import { BottomActions, BottomSpacer } from "../../telegram/buttons.tsx";
-import { ErrorState, Field, Input, ListCard, Page, SectionTitle, Segmented, SkeletonScreen, Stepper, Toggle, errorText, useToast } from "../../ui/index.ts";
+import { Card, ErrorState, Field, Input, ListCard, Page, SectionTitle, Segmented, SkeletonScreen, Stepper, Toggle, errorText, useToast } from "../../ui/index.ts";
 import type { Me } from "../../types.ts";
 
 type Settings = Record<string, number | boolean>;
@@ -15,6 +15,8 @@ interface CompanyData {
   currency: "UZS" | "USD";
   /** True once any amount is stored: the currency can no longer change. */
   currencyLocked: boolean;
+  groupTitle: string | null;
+  hasGroup: boolean;
   settings: Settings;
 }
 
@@ -84,7 +86,7 @@ export default function CompanyScreen() {
   };
 
   return (
-    <Page title={t("more.company")} subtitle={me.company.name} onBack={nav.pop}>
+    <Page title={t("more.company")} subtitle={me.company!.name} onBack={nav.pop}>
       <div className="flex flex-col gap-4">
         <Field label={t("co.name")}>
           <Input value={form.name} maxLength={80} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -107,6 +109,18 @@ export default function CompanyScreen() {
         <Toggle label={t("co.overtime")} hint={t("co.overtime_hint")} checked={Boolean(form.settings.overtimeEnabled)} onChange={(v) => set("overtimeEnabled", v)} />
         {Boolean(form.settings.overtimeEnabled) && toggle("overtimeIncludeEarly", "co.overtime_early")}
       </ListCard>
+      <SectionTitle>{t("co.section_group")}</SectionTitle>
+      <Card>
+        {form.hasGroup ? (
+          <p className="text-[16px] font-medium">{t("co.group", { title: form.groupTitle ?? "" })}</p>
+        ) : (
+          <>
+            <p className="text-[16px] font-medium text-late">{t("co.group_none")}</p>
+            <p className="mt-2 text-[15px] text-hint">{t("co.group_step1")}</p>
+            <p className="text-[15px] text-hint">{t("co.group_step2")}</p>
+          </>
+        )}
+      </Card>
       <SectionTitle>{t("co.section_finish")}</SectionTitle>
       <ListCard>
         <Toggle label={t("co.finish")} hint={t("co.finish_hint")} checked={Boolean(form.settings.collectiveFinishEnabled)} onChange={(v) => set("collectiveFinishEnabled", v)} />

@@ -6,7 +6,6 @@ import { setConfig, webAppUrl } from "../lib/appConfig.ts";
 import { db } from "../lib/db.ts";
 import { env, redact } from "../lib/env.ts";
 import { t } from "../i18n/index.ts";
-import { ensureCompany } from "../users/service.ts";
 
 export interface StepResult {
   name: string;
@@ -20,7 +19,6 @@ const REQUIRED_VARS = [
   "SETUP_SECRET",
   "QR_SIGNING_SECRET",
   "DATABASE_URL",
-  "GROUP_CHAT_ID",
   "OWNER_TELEGRAM_IDS",
 ];
 
@@ -58,18 +56,10 @@ export async function runSetup(): Promise<StepResult[]> {
   });
 
   if (dbOk) {
-    await step(results, "Company and owners", async () => {
-      const company = await ensureCompany();
-      const owners = env.ownerTelegramIds;
-      for (const telegramId of owners) {
-        const user = await db().user.upsert({ where: { telegramId }, create: { telegramId }, update: {} });
-        await db().membership.upsert({
-          where: { userId_companyId: { userId: user.id, companyId: company.id } },
-          create: { userId: user.id, companyId: company.id, role: "OWNER" },
-          update: { role: "OWNER", active: true },
-        });
-      }
-      return `Company "${company.name}" (${company.currency}). Owners: ${owners.length}.`;
+    await step(results, "Companies", async () => {
+      const total = await db().company.count();
+      const active = await db().company.count({ where: { active: true } });
+      return `${total} company(ies), ${active} active. Platform owners: ${env.ownerTelegramIds.length}. Add companies in the app: Yana → Platforma.`;
     });
   }
 
@@ -121,20 +111,15 @@ export async function runSetup(): Promise<StepResult[]> {
     return `"Ochish" opens ${webAppUrl()}.`;
   });
 
-  await step(results, "Group", async () => {
-    const groupId = env.groupChatId;
-    if (groupId === null) throw new Error("GROUP_CHAT_ID is not set. Add the bot to the group and send /groupid there.");
-    const chat = await telegram().getChat(Number(groupId));
-    const member = await telegram().getChatMember(Number(groupId), me.id);
-    const isAdmin = member.status === "administrator";
-    if (!isAdmin && !me.can_read_all_group_messages) {
-      throw new Error(
-        "The bot cannot see videos in the group. Make the bot a group admin, or in @BotFather: /setprivacy -> Disable, then remove and re-add the bot.",
-      );
-    }
-    const title = "title" in chat ? chat.title : String(groupId);
-    return `"${title}": the bot can see group videos (${isAdmin ? "admin" : "privacy mode off"}).`;
-  });
+  // Information only: each company links its own group by sending /groupid there.
+  if (dbOk) {
+    await step(results, "Groups", async () => {
+      const linked = await db().company.count({ where: { groupChatId: { not: null } } });
+      const total = await db().company.count();
+      const legacy = env.groupChatId !== null ? " GROUP_CHAT_ID is also set (used for the oldest company if it has no group)." : "";
+      return `${linked} of ${total} companies have linked a group. A company owner links one by sending /groupid in it.${legacy}`;
+    });
+  }
 
   return results;
 }

@@ -36,12 +36,12 @@ export function DaySummary({ day }: { day: DayData }) {
   if (r.overageMin) rows.push([t("d.overage"), t("c.min", { n: r.overageMin }), "text-late"]);
   if (r.overtimeMin) rows.push([t("d.overtime"), `+${t("c.min", { n: r.overtimeMin })}`, "text-ok"]);
   rows.push([t("d.worked"), `${Math.floor(r.workedMin / 60)}:${String(r.workedMin % 60).padStart(2, "0")}`]);
-  rows.push([t("d.amount"), r.amount === null ? "—" : formatMoney(r.amount, me.company.currency, lang)]);
+  rows.push([t("d.amount"), r.amount === null ? "—" : formatMoney(r.amount, me.company!.currency, lang)]);
   return (
     <Card>
       <div className="mb-3 flex items-center justify-between gap-2">
         <StatusChip look={lookOf(r)} />
-        <span className="tabular text-[22px] font-bold text-accent">{formatMoney(r.earned, me.company.currency, lang)}</span>
+        <span className="tabular text-[22px] font-bold text-accent">{formatMoney(r.earned, me.company!.currency, lang)}</span>
       </div>
       <dl className="grid grid-cols-2 gap-y-2 text-[15px]">
         {rows.map(([k, v, cls]) => (

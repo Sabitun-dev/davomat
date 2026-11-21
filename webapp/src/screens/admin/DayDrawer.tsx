@@ -148,11 +148,11 @@ export function DayDrawer({ userId, date, onClose }: { userId: number; date: str
                 value={useManual}
                 onChange={setUseManual}
                 options={[
-                  { value: "formula", label: `${t("d.clear_earned")} (${formatMoney(d.result.computedEarned, me.company.currency, lang)})` },
+                  { value: "formula", label: `${t("d.clear_earned")} (${formatMoney(d.result.computedEarned, me.company!.currency, lang)})` },
                   { value: "manual", label: t("d.set_earned") },
                 ]}
               />
-              {useManual === "manual" && <MoneyInput value={manual} currency={me.company.currency} onChange={(v) => setManual(v)} placeholder={moneyToInput(d.result.earned, me.company.currency)} />}
+              {useManual === "manual" && <MoneyInput value={manual} currency={me.company!.currency} onChange={(v) => setManual(v)} placeholder={moneyToInput(d.result.earned, me.company!.currency)} />}
             </>
           )}
           <Field label={t("c.comment_required")}>

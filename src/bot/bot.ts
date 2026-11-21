@@ -6,7 +6,9 @@ import { getConfig, webAppUrl } from "../lib/appConfig.ts";
 import { db, isUniqueViolation } from "../lib/db.ts";
 import { env, logError } from "../lib/env.ts";
 import { t } from "../i18n/index.ts";
-import { pickLanguage, savePhoneFromContact } from "../users/service.ts";
+import { loadActor, pickLanguage, savePhoneFromContact } from "../users/service.ts";
+import { companyForGroup, linkGroup } from "../companies/group.ts";
+import { isUsable } from "../companies/access.ts";
 import { onGroupVideoNote } from "../video/service.ts";
 import { replyUnderVideo } from "../jobs/notify.ts";
 import { openAppKeyboard } from "./api.ts";
@@ -51,7 +53,20 @@ export function createBot(botInfo?: UserFromGetMe): Bot {
     if (ctx.chat.type === "private") return void (await ctx.reply(t(lang, "bot.groupid_private")));
     // In a forum (group with topics) answer inside the topic where /groupid was sent.
     const thread = ctx.message?.is_topic_message ? ctx.message.message_thread_id : undefined;
-    await ctx.reply(t(lang, "bot.groupid", { id: String(ctx.chat.id) }), thread ? { message_thread_id: thread } : {});
+    const extra = thread ? { message_thread_id: thread } : {};
+    // Only the owner of a usable company may link this group to their company.
+    const sender = ctx.from ? await db().user.findUnique({ where: { telegramId: BigInt(ctx.from.id) } }) : null;
+    const owner = sender ? await loadActor(sender) : null;
+    const { result, companyName } = owner
+      ? await linkGroup({ chatId: BigInt(ctx.chat.id), title: "title" in ctx.chat ? ctx.chat.title : "", owner })
+      : { result: "not_owner" as const, companyName: undefined };
+    if (result === "not_owner") return void (await ctx.reply(t(lang, "bot.group_owner_only"), extra));
+    if (result === "taken") return void (await ctx.reply(t(lang, "bot.group_taken"), extra));
+    // Can the bot see round videos here? (admin, or privacy mode switched off)
+    const me = await ctx.api.getChatMember(ctx.chat.id, ctx.me.id).catch(() => null);
+    const sees = me?.status === "administrator" || ctx.me.can_read_all_group_messages === true;
+    const text = t(lang, "bot.group_linked", { company: companyName ?? "" }) + (sees ? "" : `\n\n${t(lang, "bot.group_make_admin")}`);
+    await ctx.reply(text, extra);
   });
 
   // The phone number arrives as a contact message after the Mini App calls requestContact.
@@ -75,9 +90,11 @@ export function createBot(botInfo?: UserFromGetMe): Bot {
 
   bot.on("message:video_note", async (ctx) => {
     if (ctx.chat.type === "private" || !ctx.from) return;
-    const groupId = env.groupChatId;
-    if (groupId === null || BigInt(ctx.chat.id) !== groupId) return;
+    // Which company owns this group? Unknown groups and stopped/expired companies are ignored.
+    const company = await companyForGroup(BigInt(ctx.chat.id));
+    if (!company || !isUsable(company)) return;
     const linked = await onGroupVideoNote({
+      companyId: company.id,
       chatId: BigInt(ctx.chat.id),
       messageId: ctx.message.message_id,
       threadId: ctx.message.is_topic_message ? (ctx.message.message_thread_id ?? null) : null,

@@ -7,7 +7,7 @@ import { db } from "../src/lib/db.ts";
 import { env } from "../src/lib/env.ts";
 import { addDays, localToUtc, toLocal, weekdayOf } from "../src/shared/time.ts";
 import { recalcUserDays } from "../src/pay/recalc.ts";
-import { ensureCompany, loadActor } from "../src/users/service.ts";
+import { loadActor } from "../src/users/service.ts";
 
 try {
   process.loadEnvFile();
@@ -23,8 +23,7 @@ export async function seedDemo(): Promise<void> {
     throw new Error("The database is not empty. The demo seed only runs on a fresh database. Nothing was changed.");
   }
 
-  const company = await ensureCompany();
-  await db().company.update({ where: { id: company.id }, data: { name: "Demo kompaniya" } });
+  const company = await db().company.create({ data: { name: "Demo kompaniya" } });
 
   const ownerTelegramId = env.ownerTelegramIds[0] ?? 900_000_000n;
   const ownerUser = await db().user.upsert({

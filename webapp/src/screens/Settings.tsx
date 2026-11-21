@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Globe, Phone, User, Shield } from "lucide-react";
+import { Building2, Check, Globe, Phone, User, Shield } from "lucide-react";
+import { useSwitchCompany } from "./onboarding/Blocked.tsx";
 import { api } from "../api.ts";
 import { useT, type Lang } from "../i18n/index.tsx";
 import { useNav } from "../nav.tsx";
@@ -13,6 +14,7 @@ export default function SettingsScreen() {
   const toast = useToast();
   const { me, setMe } = useSession();
   const [lang, setLang] = useState(me.user.language as Lang);
+  const { switchTo, busy } = useSwitchCompany();
 
   const changeLang = async (value: Lang) => {
     setLang(value);
@@ -35,6 +37,31 @@ export default function SettingsScreen() {
         onChange={changeLang}
         options={(["uz", "ru", "en"] as Lang[]).map((l) => ({ value: l, label: t(`lang.${l}`) }))}
       />
+      {me.companies.length > 1 && (
+        <>
+          <SectionTitle>{t("set.companies")}</SectionTitle>
+          <ListCard>
+            {me.companies.map((c) => (
+              <ListRow
+                key={c.id}
+                icon={<Building2 size={20} />}
+                title={c.name}
+                subtitle={t(`role.${c.role}`)}
+                right={c.id === me.company?.id ? <Check size={20} className="text-accent" /> : busy === c.id ? "…" : undefined}
+                onClick={c.id === me.company?.id ? undefined : () => switchTo(c.id)}
+              />
+            ))}
+          </ListCard>
+        </>
+      )}
+      {me.platform && (
+        <>
+          <SectionTitle>{t("pl.title")}</SectionTitle>
+          <ListCard>
+            <ListRow icon={<Globe size={20} />} title={t("pl.title")} subtitle={t("pl.subtitle")} onClick={() => nav.push("platform")} />
+          </ListCard>
+        </>
+      )}
       <SectionTitle>{t("set.title")}</SectionTitle>
       <ListCard>
         <ListRow icon={<User size={20} />} title={me.user.fullName ?? me.user.telegramName} subtitle={t("set.name")} />

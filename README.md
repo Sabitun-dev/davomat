@@ -46,8 +46,8 @@ account connected to this GitHub repo.
    | `QR_SIGNING_SECRET` | another random string, 32+ characters. **Changing it later breaks all printed QR codes.** |
    | `DATABASE_URL` | Neon pooled connection string |
    | `DATABASE_URL_UNPOOLED` | Neon direct connection string |
-   | `OWNER_TELEGRAM_IDS` | your Telegram user id (ask **@userinfobot**). Several owners: `111,222` |
-   | `GROUP_CHAT_ID` | leave empty for now (Step 5) |
+   | `OWNER_TELEGRAM_IDS` | **platform owners**: your Telegram user id (ask **@userinfobot**). Only these people can add and stop companies. Several: `111,222` |
+   | `GROUP_CHAT_ID` | not needed any more (each company links its own group with `/groupid`). If it is still set, it keeps working for the oldest company. |
    | `MINIAPP_SHORT_NAME` | `app` (the short name you will give in Step 4) |
    | `DEFAULT_LANGUAGE` | `uz` |
    | `DEFAULT_TIMEZONE` | `Asia/Tashkent` |
@@ -86,22 +86,30 @@ Open in a browser: `https://<your-site>/setup?key=<SETUP_SECRET>`
 It checks the settings and the database, connects the bot to Telegram (webhook with a secret), sets
 the bot commands and the **"Ochish"** menu button. Every line should be ✅. Opening it again is always safe.
 
-### Step 6 — Connect the group
+### Step 6 — Create your own company (in the app)
 
-**Forum groups (groups with topics) work too.** A forum is a supergroup: its ID is a normal `-100…`
-number, videos in any topic are linked, "Videoni ochish" opens the video inside its topic, and the bot
-answers in the topic where you write. Send `/groupid` in any topic.
+1. In the bot chat tap **Ochish**. Go through consent → share phone → confirm name.
+2. Because your id is in `OWNER_TELEGRAM_IDS`, you see the **Platforma** panel. Tap **Yangi kompaniya**,
+   type your company name and **your own** Telegram id as the owner, choose "Muddatsiz", save.
+   (If you already used Davomat before this change, your company is still there and you are still its owner.)
+3. Close and reopen the app: you now see your company. **Platforma** stays in **Yana** (and in *Mening
+   sozlamalarim*).
 
-1. Add the bot to your bosses-and-workers group (it should be a **supergroup**; Telegram turns a group
-   into one automatically when you change certain settings, e.g. "Chat history for new members: Visible").
-2. If you did not disable privacy in Step 1, make the bot a group admin.
-3. In the group send `/groupid`. The bot answers with a number like `-1001234567890`.
-4. Put it into Netlify as `GROUP_CHAT_ID`, then **Trigger deploy** again, then open the setup page again.
-   The "Group" line must be ✅.
+### Step 7 — Connect the company group
 
-### Step 7 — First use
+Every company links its **own** Telegram group (where workers send round videos). Only that company's
+**owner** can link it.
 
-1. In the bot chat tap **Ochish**. You (the owner) go through: consent → share phone → confirm name.
+1. Add the bot to the group and **make it an admin** (otherwise it cannot see round videos).
+2. The company owner sends `/groupid` in the group (any topic, forum groups work too).
+   The bot answers "✅ Guruh «…» kompaniyasiga ulandi."
+3. **Kompaniya sozlamalari → Guruh** shows the linked group.
+
+A group can belong to only one company. Videos in it are linked only to that company's people.
+
+### Step 8 — First use of a company
+
+1. The company owner opens the bot and taps **Ochish**: consent → share phone → confirm name.
 2. **Filiallar → Yangi filial**: name, address, put the pin on the map (or "Mening joylashuvim" while
    standing in the branch), radius 25 m. Save.
 3. On the **QR** tab tap **"A4 plakatni chatga yuborish"**. The bot sends you a PDF poster. Print it and
@@ -120,6 +128,38 @@ answers in the topic where you write. Send `/groupid` in any topic.
    the app if a Mini App with exactly that short name is registered in BotFather (`/newapp`, short name =
    `MINIAPP_SHORT_NAME`). If it is not, Telegram falls back to the bot chat. The shared link now goes
    through the bot, and the code needs no link at all.
+
+---
+
+## Selling Davomat to a new business
+
+You keep one bot; every business gets its own separate company inside it. Nobody can create a company
+without you, and each company sees only its own data.
+
+1. Ask the business owner to open **@userinfobot** in Telegram and tell you the **Id** number it shows.
+2. Open the app → **Yana → Platforma → Yangi kompaniya**. Type the company name and that Id, choose how long
+   it is paid (**+1 oy**, **+3 oy**, **+6 oy**, **+1 yil**, Muddatsiz, or a date), optionally a worker limit
+   and a private note (phone, price). Save.
+   - The bot writes to the owner: "Siz «…» kompaniyasining egasi qilib tayinlandingiz 🎉".
+   - If the bot cannot write to them yet (they never opened the bot), you see a link with **Copy** and
+     **Share**: send it to them.
+3. They open the bot, tap **Ochish**, add branches, link their group with `/groupid` and invite their own
+   admins and workers (exactly as in Step 8).
+4. In **Platforma** you see every company: status (Faol, *N kun qoldi*, Muddati tugagan, To'xtatilgan), paid
+   until, workers used / limit. Open one to **+1 oy uzaytirish**, **To'xtatish / Faollashtirish**, change
+   the limit or note, or add a second owner. There is no delete: data is always kept.
+
+**When a company is stopped or its paid-until date has passed:** its people see "Xizmat vaqtincha
+to'xtatilgan. Bot egasi bilan bog'laning." (the owner also sees why), every action is refused on the
+server, invites stop working, its group videos are ignored and the scheduler skips it. Nothing is deleted:
+extend or activate it and everything is back.
+
+**Payment reminders (automatic, once each):** 3 days before and on the last paid day, the bot tells the
+company owners "Davomat obunangiz {date} kuni tugaydi…" and tells you "«…» obunasi {date} kuni tugaydi.";
+the day after it ends, it tells you "«…» to'xtadi (muddati tugadi)." Dates are counted in Tashkent time.
+
+**People in several companies** (e.g. an admin who also works elsewhere) switch between them in
+*Mening sozlamalarim → Kompaniyalar*.
 
 ---
 
@@ -233,7 +273,7 @@ attempts per 5 minutes (10). Per branch: radius, grace and grace mode, break all
 
 ```
 npm install          # also prepares the database client
-npm test             # 128 tests; they use an in-memory Postgres (PGlite), no setup needed
+npm test             # 145 tests; they use an in-memory Postgres (PGlite), no setup needed
 npm run typecheck
 npm run build        # builds the Mini App into public/app/
 npm run screenshots  # design review: every screen, light/dark, 360/414 px -> screenshots/

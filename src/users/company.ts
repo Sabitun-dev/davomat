@@ -28,6 +28,9 @@ async function json(c: Company) {
     name: c.name,
     currency: c.currency,
     currencyLocked: await isCurrencyLocked(c.id),
+    // The company Telegram group (linked by the owner with /groupid there).
+    groupTitle: c.groupTitle,
+    hasGroup: c.groupChatId !== null,
     settings: parseSettings(c.settings),
     defaults: DEFAULT_SETTINGS,
   };

@@ -20,4 +20,6 @@ export const screens: Record<string, ComponentType<any>> = {
   workerReport: lazy(() => import("./admin/WorkerReport.tsx")),
   review: lazy(() => import("./admin/Review.tsx")),
   company: lazy(() => import("./admin/Company.tsx")),
+  platform: lazy(() => import("./platform/Platform.tsx")),
+  platformCompany: lazy(() => import("./platform/PlatformCompany.tsx")),
 };

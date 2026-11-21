@@ -193,10 +193,12 @@ describe("flags", () => {
 describe("group video link", () => {
   it("links a video sent before the event and one sent after", async () => {
     const { user } = await makeWorker(branch.id, "Video");
-    await onGroupVideoNote({ chatId: -1001234567890n, messageId: 11, fromTelegramId: user.telegramId, sentAt: at("08:50") });
+    // The company linked its group with /groupid.
+    await db().company.update({ where: { id: branch.companyId }, data: { groupChatId: -1001234567890n, groupTitle: "Test group" } });
+    await onGroupVideoNote({ companyId: branch.companyId, chatId: -1001234567890n, messageId: 11, fromTelegramId: user.telegramId, sentAt: at("08:50") });
     await attempt(user, "CHECK_IN", at("09:00"));
     await attempt(user, "BREAK_START", at("13:00"));
-    const late = await onGroupVideoNote({ chatId: -1001234567890n, messageId: 12, fromTelegramId: user.telegramId, sentAt: at("13:04") });
+    const late = await onGroupVideoNote({ companyId: branch.companyId, chatId: -1001234567890n, messageId: 12, fromTelegramId: user.telegramId, sentAt: at("13:04") });
     expect(late?.linkedEvent?.type).toBe("BREAK_START");
     const videos = await db().videoNote.findMany({ where: { userTelegramId: user.telegramId }, orderBy: { messageId: "asc" } });
     expect(videos.every((v) => v.linkedEventId !== null)).toBe(true);
@@ -204,7 +206,7 @@ describe("group video link", () => {
 
   it("a video outside the window is not linked", async () => {
     const { user } = await makeWorker(branch.id, "Video 2");
-    await onGroupVideoNote({ chatId: -1001234567890n, messageId: 21, fromTelegramId: user.telegramId, sentAt: at("08:40") });
+    await onGroupVideoNote({ companyId: branch.companyId, chatId: -1001234567890n, messageId: 21, fromTelegramId: user.telegramId, sentAt: at("08:40") });
     await attempt(user, "CHECK_IN", at("09:00"));
     const v = await db().videoNote.findFirstOrThrow({ where: { messageId: 21 } });
     expect(v.linkedEventId).toBeNull();
@@ -217,11 +219,11 @@ describe("worker today", () => {
     // Make "today" a working day for the whole day, whatever the real clock says.
     const today = new Date(Date.now() + 5 * 3600_000).toISOString().slice(0, 10);
     await db().scheduleOverride.create({ data: { branchId: branch.id, userId: user.id, date: today, startMin: 0, endMin: 1439 } });
-    const before = await workerToday(user.id);
+    const before = await workerToday(user.id, [branch.id]);
     expect(before.actions).toEqual(["CHECK_IN"]);
     await updateBranch(owner, branch.id, { graceMin: 0 });
     await attempt(user, "CHECK_IN", new Date());
-    const after = await workerToday(user.id);
+    const after = await workerToday(user.id, [branch.id]);
     expect(after.state).toBe("WORKING");
     expect(after.actions).toEqual(["BREAK_START", "CHECK_OUT"]);
   });

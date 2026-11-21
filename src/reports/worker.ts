@@ -55,9 +55,10 @@ export function eventJson(e: EventWithVideo, tz: string) {
   };
 }
 
-async function memberBranches(userId: number) {
+/** The worker's active branches, only inside the given company branches (one company at a time). */
+async function memberBranches(userId: number, branchIds: number[]) {
   const rows = await db().branchMember.findMany({
-    where: { userId, active: true, branch: { active: true } },
+    where: { userId, active: true, branchId: { in: branchIds }, branch: { active: true } },
     include: { branch: true },
     orderBy: { joinedAt: "asc" },
   });
@@ -97,8 +98,8 @@ export function streakOf(results: DailyResult[], today: string): number {
   return streak;
 }
 
-export async function workerToday(userId: number, preferredBranchId?: number) {
-  const members = await memberBranches(userId);
+export async function workerToday(userId: number, branchIds: number[], preferredBranchId?: number) {
+  const members = await memberBranches(userId, branchIds);
   if (!members.length) throw notFound();
   // The branch of today's check-in wins; else the chosen one; else the first.
   let chosen = members.find((m) => m.branchId === preferredBranchId) ?? members[0];
@@ -126,7 +127,7 @@ export async function workerToday(userId: number, preferredBranchId?: number) {
 
   const month = monthOf(local.date);
   const history = await db().dailyResult.findMany({
-    where: { userId, date: { gte: addDays(local.date, -120), lte: local.date } },
+    where: { userId, branchId: { in: branchIds }, date: { gte: addDays(local.date, -120), lte: local.date } },
     orderBy: { date: "desc" },
   });
   const monday = addDays(local.date, 1 - weekdayOf(local.date));
@@ -159,9 +160,10 @@ export async function workerToday(userId: number, preferredBranchId?: number) {
   };
 }
 
-export async function workerMonth(userId: number, month: string) {
-  const members = await memberBranches(userId);
-  const allRows = await db().dailyResult.findMany({ where: { userId, date: { startsWith: month } } });
+/** branchIds: the company branches that may be shown (one company at a time). */
+export async function workerMonth(userId: number, month: string, branchIds: number[]) {
+  const members = await memberBranches(userId, branchIds);
+  const allRows = await db().dailyResult.findMany({ where: { userId, branchId: { in: branchIds }, date: { startsWith: month } } });
   const main = members[0];
   const byDate = new Map(allRows.map((r) => [r.date, r]));
   const dates = daysInMonth(month);
@@ -199,9 +201,9 @@ export async function workerMonth(userId: number, month: string) {
   };
 }
 
-export async function workerHistory(userId: number, before?: string) {
+export async function workerHistory(userId: number, branchIds: number[], before?: string) {
   const rows = await db().dailyResult.findMany({
-    where: { userId, ...(before ? { date: { lt: before } } : {}), NOT: { status: "NOT_STARTED" } },
+    where: { userId, branchId: { in: branchIds }, ...(before ? { date: { lt: before } } : {}), NOT: { status: "NOT_STARTED" } },
     orderBy: { date: "desc" },
     take: 30,
     include: { branch: { select: { name: true, timezone: true } } },
@@ -214,11 +216,15 @@ export async function workerHistory(userId: number, before?: string) {
   }));
 }
 
-/** One day: events (and for admins also rejected attempts and the audit trail). */
-export async function dayDetail(userId: number, date: string, opts: { admin: boolean }) {
-  const result = await db().dailyResult.findUnique({ where: { userId_date: { userId, date } }, include: { branch: true } });
+/**
+ * One day: events (and for admins also rejected attempts and the audit trail).
+ * Only data from `branchIds` is shown, so a person in two companies never leaks the other one.
+ */
+export async function dayDetail(userId: number, date: string, opts: { admin: boolean; branchIds: number[] }) {
+  const found = await db().dailyResult.findUnique({ where: { userId_date: { userId, date } }, include: { branch: true } });
+  const result = found && opts.branchIds.includes(found.branchId) ? found : null;
   const events = await db().attendanceEvent.findMany({
-    where: { userId, localDate: date, ...(opts.admin ? {} : { status: "ACCEPTED", voided: false }) },
+    where: { userId, localDate: date, branchId: { in: opts.branchIds }, ...(opts.admin ? {} : { status: "ACCEPTED", voided: false }) },
     orderBy: [{ serverTime: "asc" }, { id: "asc" }],
     include: { videoNote: true, branch: { select: { name: true, timezone: true } } },
   });

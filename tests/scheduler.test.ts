@@ -104,7 +104,8 @@ describe("scheduler", () => {
     await checkIn(user, b, at("09:00"));
     const { user: u2 } = await makeWorker(b.id, "Only video", 10000);
     await db().branchMember.updateMany({ where: { userId: u2.id }, data: { joinedAt: new Date("2026-01-01") } });
-    await onGroupVideoNote({ chatId: -1001n, messageId: 555, fromTelegramId: u2.telegramId, sentAt: at("09:00") });
+    await db().company.update({ where: { id: b.companyId }, data: { groupChatId: -1009n } });
+    await onGroupVideoNote({ companyId: b.companyId, chatId: -1009n, messageId: 555, fromTelegramId: u2.telegramId, sentAt: at("09:00") });
     await runScheduler(at("09:30"));
     const r1 = await db().dailyResult.findUniqueOrThrow({ where: { userId_date: { userId: user.id, date: DAY } } });
     expect(r1.flags).toContain("no_video");
@@ -117,7 +118,8 @@ describe("scheduler", () => {
     await db().company.updateMany({ data: { settings: { botReplyUnderVideo: true } } });
     const b = await freshBranch("Filial X");
     const { user } = await makeWorker(b.id, "Replied", 10000);
-    await onGroupVideoNote({ chatId: -1009n, messageId: 77, threadId: 5, fromTelegramId: user.telegramId, sentAt: at("09:05") });
+    await db().company.update({ where: { id: b.companyId }, data: { groupChatId: -1009n } });
+    await onGroupVideoNote({ companyId: b.companyId, chatId: -1009n, messageId: 77, threadId: 5, fromTelegramId: user.telegramId, sentAt: at("09:05") });
     await checkIn(user, b, at("09:07"));
     const reply = sent.find((s) => s.replyTo === 77);
     expect(reply?.threadId).toBe(5);

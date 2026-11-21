@@ -111,6 +111,11 @@ export async function createBranch(actor: Actor, raw: Record<string, unknown>): 
       after: branch,
     });
     return branch;
+  }).then((branch) => {
+    // Keep this request's actor in step with the new branch.
+    actor.companyBranchIds.push(branch.id);
+    if (actor.role === "ADMIN") actor.adminBranchIds.push(branch.id);
+    return branch;
   });
 }
 

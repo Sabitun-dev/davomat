@@ -11,6 +11,7 @@ export async function exportFileFromParams(params: Record<string, string>): Prom
   const user = await db().user.findUnique({ where: { id: Number(params.u) } });
   if (!user) throw notFound();
   const actor = await loadActor(user);
-  if (!isStaff(actor)) throw notFound();
+  // The link belongs to the company it was made in, and that company must still be usable.
+  if (!isStaff(actor) || actor.companyId !== Number(params.c) || actor.companyState !== "ok") throw notFound();
   return buildExport(actor, params.k as ExportKind, params.f as ExportFormat, params.m, params.b ? Number(params.b) : undefined, user.language);
 }

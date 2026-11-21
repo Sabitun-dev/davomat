@@ -7,6 +7,7 @@ import { inTelegram, startParam, telegramLanguage } from "./telegram/tg.ts";
 import { ErrorState, Picture, SkeletonScreen, ToastProvider } from "./ui/index.ts";
 import { ConsentScreen, IntroScreen, NameScreen, NoBranchScreen, PhoneScreen } from "./screens/onboarding/Onboarding.tsx";
 import { InviteScreen } from "./screens/onboarding/Invite.tsx";
+import { BlockedScreen } from "./screens/onboarding/Blocked.tsx";
 import { screens } from "./screens/registry.tsx";
 import type { Me } from "./types.ts";
 
@@ -43,20 +44,35 @@ function Stack() {
   );
 }
 
-/** Decides what to show: first-open steps, invite, intro, then the home screen for the role. */
+/**
+ * Decides what to show: first-open steps, invite, a paused company, the platform panel,
+ * intro, then the home screen for the role in the current company.
+ */
 function Gate({ me }: { me: Me }) {
   const [inviteDone, setInviteDone] = useState(false);
+  const [platformOpen, setPlatformOpen] = useState(false);
   if (me.needs.consent) return <ConsentScreen />;
   if (me.needs.phone) return <PhoneScreen />;
   if (me.needs.name) return <NameScreen />;
   const param = me.startParam ?? startParam();
   const invite = param?.startsWith("inv_") ? param.slice(4) : null;
   if (invite && !inviteDone) return <InviteScreen token={invite} onDone={() => setInviteDone(true)} />;
+  // The platform owner without a company of their own lands on the platform panel.
+  if (me.platform && (!me.company || platformOpen)) {
+    return (
+      <NavProvider key="platform" root={{ name: "platform", params: me.company ? { onClose: () => setPlatformOpen(false) } : {} }}>
+        <Stack />
+      </NavProvider>
+    );
+  }
+  if (me.company && me.company.state !== "ok") return <BlockedScreen onPlatform={() => setPlatformOpen(true)} />;
+  if (!me.company) return <NoBranchScreen />;
   const introRole = me.isStaff ? "admin" : "worker";
   if ((me.isStaff || me.branches.length > 0) && !me.user.introSeen.includes(introRole)) return <IntroScreen role={introRole} />;
   if (!me.isStaff && me.branches.length === 0) return <NoBranchScreen />;
+  // A new company (after switching) starts from a fresh screen stack.
   return (
-    <NavProvider root={{ name: me.isStaff ? "adminHome" : "workerHome" }}>
+    <NavProvider key={`company-${me.company.id}`} root={{ name: me.isStaff ? "adminHome" : "workerHome" }}>
       <Stack />
     </NavProvider>
   );

@@ -39,7 +39,7 @@ export default function WorkerReport({ userId, name, month: initial }: { userId:
   const [amount, setAmount] = useState<number | null>(null);
   const [comment, setComment] = useState("");
 
-  const money = (n: number) => formatMoney(n, me.company.currency, lang);
+  const money = (n: number) => formatMoney(n, me.company!.currency, lang);
   // A worker can have rows in two branches; add them up.
   const rows = report.data?.rows ?? [];
   const sum = (k: keyof Totals) => rows.reduce((s, r) => s + (r[k] as number), 0);
@@ -125,7 +125,7 @@ export default function WorkerReport({ userId, name, month: initial }: { userId:
       <Sheet open={Boolean(adding)} onClose={() => setAdding(null)} title={adding === "BONUS" ? t("r.add_bonus") : t("r.add_fine")}>
         <div className="flex flex-col gap-4">
           <Field label={t("r.amount")}>
-            <MoneyInput value={amount} currency={me.company.currency} onChange={(v) => setAmount(v)} />
+            <MoneyInput value={amount} currency={me.company!.currency} onChange={(v) => setAmount(v)} />
           </Field>
           <Field label={t("c.comment_required")}>
             <TextArea value={comment} onChange={(e) => setComment(e.target.value)} />
